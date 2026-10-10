@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6e8f1" />
+  <title>写给你的温柔心事</title>
+  <style>
+    /* ==================== 可修改：全站配色 ==================== */
+    :root {
+      --pink: #f6dce9;
+      --lavender: #e5def7;
+      --cream: #fffafc;
+      --ink: #625564;
+      --accent: #bd879e;
+      --card: rgba(255, 255, 255, .43);
+      --line: rgba(255, 255, 255, .65);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: linear-gradient(125deg, var(--pink), #f8edf4, var(--lavender), #f4e5ee);
+      background-size: 300% 300%;
+      animation: backgroundFlow 16s ease-in-out infinite;
+      overflow-x: hidden;
+      opacity: 0;
+      animation: pageIn 1.5s ease-out forwards, backgroundFlow 16s ease-in-out infinite;
+    }
+    @keyframes pageIn { to { opacity: 1; } }
+    @keyframes backgroundFlow {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .ambient { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: -2; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(4px); opacity: .43; animation: drift 12s ease-in-out infinite alternate; }
+    .orb.one { width: 38vw; height: 38vw; min-width: 280px; min-height: 280px; background: rgba(255,255,255,.42); top: -14%; left: -10%; }
+    .orb.two { width: 29vw; height: 29vw; min-width: 220px; min-height: 220px; background: rgba(217, 198, 246, .56); right: -8%; bottom: 2%; animation-delay: -5s; }
+    @keyframes drift { to { transform: translate(3vw, 3vh) scale(1.08); } }
+
+    /* 爱心粒子容器：不会拦截点击，也不会遮挡正文 */
+    #hearts { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+    .particle-heart { position: absolute; bottom: -40px; color: #c994ad; opacity: 0; animation: floatUp linear forwards; will-change: transform, opacity; }
+    @keyframes floatUp {
+      0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(.7); opacity: 0; }
+      14%, 76% { opacity: .32; }
+      100% { transform: translate3d(var(--drift), -112vh, 0) rotate(28deg) scale(1.15); opacity: 0; }
+    }
+
+    main { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 72px 0 48px; }
+    .glass {
+      background: var(--card);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 54px rgba(118, 78, 113, .13), inset 0 1px 0 rgba(255,255,255,.55);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius: 28px;
+    }
+    .hero { padding: clamp(38px, 8vw, 76px) 28px; text-align: center; margin-bottom: 28px; }
+    .eyebrow { margin: 0 0 18px; font-size: .76rem; letter-spacing: .25em; color: #9c748a; }
+    h1 { margin: 0; font: 400 clamp(2.1rem, 7vw, 4.5rem)/1.2 Georgia, "Songti SC", serif; letter-spacing: .08em; color: #796072; }
+    .hero p { margin: 23px auto 0; max-width: 34em; font-size: clamp(.95rem, 2vw, 1.08rem); line-height: 2; color: #826d7d; }
+    .tiny-heart { display: block; color: var(--accent); font-size: 1.3rem; margin-top: 24px; animation: breathe 2.8s ease-in-out infinite; }
+    @keyframes breathe { 50% { transform: scale(1.18); opacity: .7; } }
+
+    section { margin: 28px 0; }
+    .section-title { font: 400 1.35rem Georgia, "Songti SC", serif; letter-spacing: .13em; color: #856376; margin: 0 0 17px 9px; }
+    .counter { padding: 30px 22px 25px; text-align: center; }
+    .counter-note { margin: 0 0 20px; font-size: .9rem; color: #987b8b; }
+    .days { font: 400 clamp(3.4rem, 13vw, 6.4rem)/1 Georgia, serif; color: #9f6f85; text-shadow: 0 5px 22px rgba(160,111,135,.15); }
+    .days span { font: 400 1rem "Microsoft YaHei", sans-serif; margin-left: 6px; color: #8b7381; }
+    .time-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 500px; margin: 25px auto 0; }
+    .time-unit { border-radius: 15px; padding: 11px 4px; background: rgba(255,255,255,.3); }
+    .time-unit strong { display: block; font: 400 1.45rem Georgia, serif; color: #876176; }
+    .time-unit small { color: #a18594; font-size: .7rem; }
+    .elapsed { margin: 18px 0 0; color: #987b8b; font-size: .83rem; }
+
+    .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .photo { margin: 0; border-radius: 20px; overflow: hidden; background: rgba(255,255,255,.42); box-shadow: 0 8px 20px rgba(101,72,94,.08); transition: transform .45s cubic-bezier(.2,.8,.2,1), box-shadow .45s; }
+    .photo:nth-child(2) { transform: translateY(18px); }
+    .photo:hover { transform: translateY(-8px) scale(1.015); box-shadow: 0 20px 32px rgba(101,72,94,.2); }
+    .photo:nth-child(2):hover { transform: translateY(10px) scale(1.015); }
+    .photo-media { width: 100%; aspect-ratio: 4 / 5; display: block; object-fit: cover; background: linear-gradient(145deg, #eed6e2, #ded5ee); }
+    /* 未放入本地照片时显示的柔和占位图 */
+    .photo-media.is-placeholder { background: linear-gradient(145deg, #edcfdd, #e3daf0 56%, #f8edf1); }
+    .photo:nth-child(2) .photo-media.is-placeholder { background: linear-gradient(145deg, #e6d9f0, #f7e5eb 58%, #dfcce1); }
+    .photo:nth-child(3) .photo-media.is-placeholder { background: linear-gradient(145deg, #f3dbe4, #f4edf2 52%, #d8d1ec); }
+    figcaption { padding: 11px 12px 13px; text-align: center; font-size: .75rem; color: #927687; }
+
+    .letter { padding: clamp(29px, 6vw, 54px); }
+    .letter p { margin: 0 0 1em; font-family: "KaiTi", "STKaiti", "FangSong", serif; font-size: clamp(1.15rem, 3vw, 1.43rem); line-height: 2.18; letter-spacing: .08em; color: #705b69; opacity: 0; transform: translateY(12px); animation: lineReveal .8s ease forwards; }
+    .letter p:nth-child(1) { animation-delay: .25s; }.letter p:nth-child(2) { animation-delay: .6s; }.letter p:nth-child(3) { animation-delay: .95s; }.letter p:nth-child(4) { animation-delay: 1.3s; }
+    @keyframes lineReveal { to { opacity: 1; transform: translateY(0); } }
+    .more-love { overflow: hidden; max-height: 0; opacity: 0; transition: max-height .75s ease, opacity .5s ease, margin .5s ease; }
+    .more-love.is-open { max-height: 420px; opacity: 1; margin-top: 1em; }
+    .more-love p { opacity: 1; transform: none; animation: none; }
+    .more-button { display: block; margin: 23px auto 0; border: 1px solid rgba(181, 125, 151, .38); border-radius: 99px; padding: 10px 20px; cursor: pointer; background: rgba(255,255,255,.35); color: #9d6c83; font: .88rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; transition: transform .3s ease, background .3s ease, box-shadow .3s ease; }
+    .more-button:hover { transform: translateY(-2px); background: rgba(255,255,255,.6); box-shadow: 0 8px 18px rgba(137,88,112,.13); }
+    .signature { text-align: right; margin: 30px 5px 0 !important; color: #a36d85 !important; }
+    .wish-card { padding: clamp(27px, 5vw, 42px); }
+    .wish-intro { margin: 0 0 18px; color: #927485; font: .92rem/1.8 "Microsoft YaHei", sans-serif; }
+    .wish-list { padding: 0; margin: 0; list-style: none; display: grid; gap: 11px; }
+    .wish-item { display: flex; align-items: center; gap: 11px; padding: 10px 13px; border-radius: 13px; border: 1px dashed rgba(169, 118, 141, .38); background: rgba(255,255,255,.25); color: #7e6372; transition: background .25s, opacity .25s; }
+    .wish-check { appearance: none; flex: 0 0 20px; width: 20px; height: 20px; margin: 0; border: 1px solid rgba(169, 118, 141, .64); border-radius: 6px; cursor: pointer; background: rgba(255,255,255,.55); display: grid; place-content: center; transition: background .2s, border-color .2s; }
+    .wish-check::before { content: "✓"; color: white; font-size: .9rem; font-weight: bold; transform: scale(0); transition: transform .16s ease; }
+    .wish-check:checked { background: #bb829a; border-color: #bb829a; }
+    .wish-check:checked::before { transform: scale(1); }
+    .wish-text { flex: 1; min-width: 0; padding: 3px 1px; outline: none; font-family: "KaiTi", "STKaiti", serif; font-size: 1.05rem; line-height: 1.55; }
+    .wish-text:empty::before { content: attr(data-placeholder); color: #ae96a3; }
+    .wish-item:has(.wish-check:checked) { opacity: .62; background: rgba(255,255,255,.15); }
+    .wish-item:has(.wish-check:checked) .wish-text { text-decoration: line-through; text-decoration-color: rgba(137, 89, 112, .55); }
+    .add-wish { display: block; width: 100%; margin-top: 13px; padding: 10px; border: 1px dashed rgba(169, 118, 141, .5); border-radius: 13px; cursor: pointer; background: transparent; color: #a17187; font: .88rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; transition: background .25s, transform .25s; }
+    .add-wish:hover { background: rgba(255,255,255,.36); transform: translateY(-1px); }
+    footer { text-align: center; padding: 24px 0 6px; font: .84rem Georgia, serif; letter-spacing: .12em; color: rgba(111,83,102,.7); }
+
+    .click-heart { position: fixed; z-index: 5; pointer-events: none; color: #bd7794; font-size: 18px; transform: translate(-50%, -50%); animation: clickPop .85s ease-out forwards; text-shadow: 0 5px 18px rgba(190,105,139,.3); }
+    @keyframes clickPop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.25); } 25% { opacity: .9; } 100% { opacity: 0; transform: translate(-50%,-85%) scale(3); } }
+    @media (max-width: 560px) { main { width: min(100% - 24px, 920px); padding-top: 40px; }.gallery { gap: 9px; }.photo { border-radius: 14px; }.photo:nth-child(2) { transform: translateY(10px); }.time-grid { gap: 5px; }.time-unit { padding: 9px 2px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <div class="ambient"><i class="orb one"></i><i class="orb two"></i></div>
+  <div id="hearts" aria-hidden="true"></div>
+
+  <main>
+    <header class="hero glass">
+      <!-- ==================== 可修改：开场标题与副标题 ==================== -->
+      <p class="eyebrow">FOR YOU, ALWAYS</p>
+      <h1>写给最特别的你</h1>
+      <p>有些心意不必声张，却在每一个平常的瞬间，安静地奔向你。</p>
+      <span class="tiny-heart">♡</span>
+    </header>
+
+    <section>
+      <h2 class="section-title">我们的时间</h2>
+      <div class="counter glass">
+        <p class="counter-note">从那个怦然心动的日子开始</p>
+        <div class="days"><b id="days">0</b><span>天</span></div>
+        <div class="time-grid">
+          <div class="time-unit"><strong id="hours">00</strong><small>小时</small></div>
+          <div class="time-unit"><strong id="minutes">00</strong><small>分钟</small></div>
+          <div class="time-unit"><strong id="seconds">00</strong><small>秒</small></div>
+          <div class="time-unit"><strong id="years">0</strong><small>年</small></div>
+        </div>
+        <p class="elapsed" id="elapsed">正在记录我们的每一刻</p>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">藏在时光里的片段</h2>
+      <!-- ==================== 可修改：图片路径与图片说明；复制 figure 可增加照片 ==================== -->
+      <div class="gallery" id="gallery">
+        <figure class="photo"><img class="photo-media" src="44C0C187A706FC900C7E1657A618F81E.jpg" alt="我们的回忆一"><figcaption>那天的风很温柔</figcaption></figure>
+        <figure class="photo"><img class="photo-media" src="7C48E35CE67184E610786CB72B12F37F.jpg" alt="我们的回忆二"><figcaption>一起看过的风景</figcaption></figure>
+        <figure class="photo"><img class="photo-media" src="7B236FCB471B1B363FC320CFD8392404.jpg" alt="我们的回忆三"><figcaption>被珍藏的笑意</figcaption></figure>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">想对你说</h2>
+      <!-- ==================== 可修改：告白文字与署名 ==================== -->
+      <article class="letter glass">
+        <p>遇见你以后，日子忽然有了柔软的颜色。</p>
+        <p>谢谢你走进我的世界，让平凡的每一天都值得期待。</p>
+        <p>未来很长，想把我的偏爱、耐心和所有小小的欢喜，都慢慢交给你。</p>
+        <p>愿我们把每一次并肩，都走成温柔而笃定的以后。</p>
+        <!-- 点击按钮后显示的隐藏告白文字，可继续增加 p 标签。 -->
+        <div class="more-love" id="moreLove" aria-hidden="true">
+          <p>我也想在每一个需要被拥抱的时刻，稳稳站在你身边。</p>
+          <p>不止今天，不止此刻，想把往后的四季都写进我们的故事里。</p>
+        </div>
+        <button class="more-button" id="moreButton" type="button" aria-expanded="false" aria-controls="moreLove">展开更多心意</button>
+        <p class="signature">—— <span>李爱民</span></p>
+      </article>
+    </section>
+
+    <section>
+      <h2 class="section-title">想和你一起完成的事</h2>
+      <!-- ==================== 可修改：未来愿望清单 ==================== -->
+      <article class="wish-card glass">
+        <p class="wish-intro">把想去的地方、想一起做的小事，慢慢写在这里，等我们一件件实现。</p>
+        <ul class="wish-list" id="wishList">
+          <li class="wish-item"><input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下第一个愿望">在这里写下第一个愿望</span></li>
+          <li class="wish-item"><input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下第二个愿望">在这里写下第二个愿望</span></li>
+          <li class="wish-item"><input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下第三个愿望">在这里写下第三个愿望</span></li>
+        </ul>
+        <button class="add-wish" id="addWish" type="button">＋ 添加一个愿望</button>
+      </article>
+    </section>
+    <footer>WITH ALL MY HEART ♡</footer>
+  </main>
+
+  <script>
+    /* ==================== 可修改：纪念日时间（格式：年, 月-1, 日, 时, 分, 秒） ====================
+       例如 2023年5月20日 20:00:00 写为：new Date(2023, 4, 20, 20, 0, 0)
+       注意：JavaScript 的月份从 0 开始，1月是0，12月是11。 */
+    const anniversaryDate = new Date(2023, 3, 20, 0, 0, 0);
+
+    const pad = number => String(number).padStart(2, '0');
+    function updateCounter() {
+      const now = new Date();
+      const diff = Math.max(0, now - anniversaryDate);
+      const totalSeconds = Math.floor(diff / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      let years = now.getFullYear() - anniversaryDate.getFullYear();
+      const thisYearAnniversary = new Date(now.getFullYear(), anniversaryDate.getMonth(), anniversaryDate.getDate());
+      if (now < thisYearAnniversary) years--;
+      document.querySelector('#days').textContent = days.toLocaleString('zh-CN');
+      document.querySelector('#hours').textContent = pad(hours);
+      document.querySelector('#minutes').textContent = pad(minutes);
+      document.querySelector('#seconds').textContent = pad(seconds);
+      document.querySelector('#years').textContent = Math.max(0, years);
+      document.querySelector('#elapsed').textContent = `已经一起走过 ${days.toLocaleString('zh-CN')} 天 ${hours} 小时 ${minutes} 分钟`;
+    }
+    updateCounter(); setInterval(updateCounter, 1000);
+
+    // 每次打开页面时，将目录中的三张照片随机排序。
+    const gallery = document.querySelector('#gallery');
+    [...gallery.children]
+      .sort(() => Math.random() - 0.5)
+      .forEach(photo => gallery.appendChild(photo));
+
+    // 展开 / 收起隐藏的告白文字。
+    const moreButton = document.querySelector('#moreButton');
+    const moreLove = document.querySelector('#moreLove');
+    moreButton.addEventListener('click', () => {
+      const isOpen = moreLove.classList.toggle('is-open');
+      moreLove.setAttribute('aria-hidden', String(!isOpen));
+      moreButton.setAttribute('aria-expanded', String(isOpen));
+      moreButton.textContent = isOpen ? '收起这份心意' : '展开更多心意';
+    });
+
+    // 愿望清单：可直接编辑、点击方框完成，且自动保存在本浏览器中。
+    const wishList = document.querySelector('#wishList');
+    const addWish = document.querySelector('#addWish');
+    const wishesStorageKey = 'romantic-wish-list-v1';
+    function createWishItem(text = '', done = false) {
+      const item = document.createElement('li');
+      item.className = 'wish-item';
+      item.innerHTML = `<input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下一个想一起完成的愿望"></span>`;
+      const check = item.querySelector('.wish-check');
+      const content = item.querySelector('.wish-text');
+      check.checked = done; content.textContent = text;
+      return item;
+    }
+    function saveWishes() {
+      const wishes = [...wishList.querySelectorAll('.wish-item')].map(item => ({
+        text: item.querySelector('.wish-text').textContent.trim(),
+        done: item.querySelector('.wish-check').checked
+      }));
+      localStorage.setItem(wishesStorageKey, JSON.stringify(wishes));
+    }
+    try {
+      const savedWishes = JSON.parse(localStorage.getItem(wishesStorageKey));
+      if (Array.isArray(savedWishes) && savedWishes.length) {
+        wishList.replaceChildren(...savedWishes.map(wish => createWishItem(wish.text, wish.done)));
+      }
+    } catch (error) { /* 浏览器禁用本地存储时，仍可正常编辑本页。 */ }
+    wishList.addEventListener('input', saveWishes);
+    wishList.addEventListener('change', saveWishes);
+    addWish.addEventListener('click', () => {
+      const item = createWishItem();
+      wishList.appendChild(item); saveWishes();
+      item.querySelector('.wish-text').focus();
+    });
+
+    // 背景爱心：分批生成以降低页面负担，密度保持适中。
+    const heartBox = document.querySelector('#hearts');
+    function createHeart() {
+      const heart = document.createElement('span');
+      heart.className = 'particle-heart'; heart.textContent = '♥';
+      heart.style.left = `${Math.random() * 100}%`;
+      heart.style.fontSize = `${8 + Math.random() * 13}px`;
+      heart.style.setProperty('--drift', `${-40 + Math.random() * 80}px`);
+      heart.style.animationDuration = `${11 + Math.random() * 10}s`;
+      heartBox.appendChild(heart);
+      heart.addEventListener('animationend', () => heart.remove());
+    }
+    for (let i = 0; i < 8; i++) setTimeout(createHeart, i * 900);
+    setInterval(createHeart, 2100);
+
+    // 小彩蛋：点击页面任意处，会短暂绽放一颗爱心。
+    document.addEventListener('click', event => {
+      const heart = document.createElement('span');
+      heart.className = 'click-heart'; heart.textContent = '♥';
+      heart.style.left = `${event.clientX}px`; heart.style.top = `${event.clientY}px`;
+      document.body.appendChild(heart);
+      heart.addEventListener('animationend', () => heart.remove());
+    });
+
+    /* 可选背景音乐（默认关闭：请准备本地 music.mp3 后取消下一行注释）
+    const music = new Audio('music.mp3'); music.loop = true; */
+  </script>
+</body>
+</html>
