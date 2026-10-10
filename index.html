@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6e8f1" />
+  <!-- 分享到微信/QQ 时显示的卡片（og:image 建议替换为部署后的完整网址图片） -->
+  <meta property="og:title" content="写给你的温柔心事" />
+  <meta property="og:description" content="有些心意不必声张，却在每一个平常的瞬间，安静地奔向你。" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://cdn.jsdelivr.net/gh/linmo007/static-web-demo@main/44C0C187A706FC900C7E1657A618F81E.jpg" />
+  <!-- PWA：可像 App 一样添加到手机主屏幕 -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <title>写给你的温柔心事</title>
   <style>
     /* ==================== 可修改：全站配色 ==================== */
@@ -121,13 +129,77 @@
 
     .click-heart { position: fixed; z-index: 5; pointer-events: none; color: #bd7794; font-size: 18px; transform: translate(-50%, -50%); animation: clickPop .85s ease-out forwards; text-shadow: 0 5px 18px rgba(190,105,139,.3); }
     @keyframes clickPop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.25); } 25% { opacity: .9; } 100% { opacity: 0; transform: translate(-50%,-85%) scale(3); } }
-    @media (max-width: 560px) { main { width: min(100% - 24px, 920px); padding-top: 40px; }.gallery { gap: 9px; }.photo { border-radius: 14px; }.photo:nth-child(2) { transform: translateY(10px); }.time-grid { gap: 5px; }.time-unit { padding: 9px 2px; } }
+
+    /* 照片灯箱：点击照片全屏查看 */
+    .lightbox { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; background: rgba(46, 32, 44, .82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; visibility: hidden; transition: opacity .35s ease, visibility .35s; cursor: zoom-out; }
+    .lightbox.is-open { opacity: 1; visibility: visible; }
+    .lightbox img { max-width: min(92vw, 1000px); max-height: 88vh; border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.45); transform: scale(.92); transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+    .lightbox.is-open img { transform: scale(1); }
+    .lightbox-hint { position: absolute; bottom: 26px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,.66); font: .8rem "Microsoft YaHei", sans-serif; letter-spacing: .1em; }
+
+    /* 愿望署名输入与标签 */
+    .wish-author { width: 100%; max-width: 260px; display: block; margin: 0 0 14px; padding: 9px 13px; border: 1px dashed rgba(169, 118, 141, .4); border-radius: 11px; outline: none; background: rgba(255,255,255,.3); color: #7e6372; font: .88rem "Microsoft YaHei", sans-serif; transition: background .25s; }
+    .wish-author:focus { background: rgba(255,255,255,.55); }
+    .wish-author-label { display: block; margin: 2px 0 0 30px; font: .74rem "Microsoft YaHei", sans-serif; color: #a9909e; letter-spacing: .05em; }
+    .wish-item { position: relative; }
+    .wish-delete { position: absolute; top: 50%; right: 9px; transform: translateY(-50%); width: 24px; height: 24px; border: none; border-radius: 8px; cursor: pointer; background: transparent; color: rgba(161, 113, 135, .45); font: 1rem/1 "Microsoft YaHei", sans-serif; opacity: 0; transition: opacity .2s, background .2s, color .2s; }
+    .wish-item:hover .wish-delete, .wish-delete.is-armed { opacity: 1; }
+    .wish-delete:hover { background: rgba(189, 120, 148, .14); color: #a15b78; }
+    .wish-delete.is-armed { background: rgba(189, 120, 148, .2); color: #a04363; font-size: .68rem; width: auto; padding: 0 8px; }
+
+    /* 勾选完成时绽放的爱心 */
+    .burst-heart { position: fixed; z-index: 6; pointer-events: none; color: #c984a0; animation: burst .75s ease-out forwards; }
+    @keyframes burst { 0% { opacity: .95; transform: translate(-50%,-50%) scale(.4); } 100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.25) rotate(var(--rot)); } }
+
+    /* 新愿望提示条 */
+    .wish-toast { position: fixed; top: 18px; left: 50%; transform: translate(-50%, -80px); z-index: 40; padding: 11px 22px; border-radius: 99px; background: rgba(255, 250, 252, .82); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 12px 34px rgba(118, 78, 113, .2); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: #96637c; font: .88rem "Microsoft YaHei", sans-serif; letter-spacing: .06em; transition: transform .5s cubic-bezier(.2,.9,.3,1.2); }
+    .wish-toast.is-show { transform: translate(-50%, 0); }
+
+    /* 滚动淡入 */
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+    .reveal.is-visible { opacity: 1; transform: none; }
+
+    /* 深色模式：夜晚的紫罗兰夜色 */
+    @media (prefers-color-scheme: dark) {
+      :root { --pink: #3a2c3e; --lavender: #332b46; --cream: #241d28; --ink: #d5c2d2; --card: rgba(52, 42, 58, .52); --line: rgba(255, 255, 255, .14); }
+      body { background: linear-gradient(125deg, var(--pink), #2f2536, var(--lavender), #2c2135); color: var(--ink); }
+      .orb.one { background: rgba(255,255,255,.1); }
+      .orb.two { background: rgba(150, 110, 200, .22); }
+      .particle-heart { color: #9c6b86; }
+      .hero .eyebrow { color: #b98fa6; }
+      h1 { color: #e3cddd; }
+      .hero p, .counter-note, .elapsed { color: #b49cae; }
+      .section-title { color: #cba6ba; }
+      .days { color: #d5a0b8; }
+      .days span { color: #b49cae; }
+      .time-unit { background: rgba(255,255,255,.07); }
+      .time-unit strong { color: #d0a8c0; }
+      .time-unit small, .letter p { color: #c3a8bd; }
+      .more-button { background: rgba(255,255,255,.08); border-color: rgba(209, 145, 173, .3); color: #cf9db6; }
+      .more-button:hover { background: rgba(255,255,255,.14); }
+      .signature { color: #cf9db6 !important; }
+      .wish-card .wish-intro { color: #b49cae; }
+      .wish-item { background: rgba(255,255,255,.06); color: #c3a8bd; border-color: rgba(209, 145, 173, .3); }
+      .wish-check { background: rgba(255,255,255,.12); border-color: rgba(209, 145, 173, .5); }
+      .wish-text:empty::before { color: #8d7386; }
+      .wish-empty { background: rgba(255,255,255,.05); color: #8d7386; border-color: rgba(209, 145, 173, .2); }
+      .wish-author { background: rgba(255,255,255,.07); border-color: rgba(209, 145, 173, .3); color: #c3a8bd; }
+      .wish-author-label { color: #8d7386; }
+      .add-wish { color: #cf9db6; border-color: rgba(209, 145, 173, .4); }
+      .add-wish:hover { background: rgba(255,255,255,.1); }
+      figcaption { color: #a98fa2; }
+      .photo, .photo-media { background: rgba(255,255,255,.08); }
+      .wish-toast { background: rgba(52, 42, 58, .85); border-color: rgba(255,255,255,.14); color: #d5a8bd; }
+      footer { color: rgba(213, 194, 210, .6); }
+    }
+    @media (max-width: 560px) { main { width: min(100% - 24px, 920px); padding-top: 40px; }.gallery { gap: 9px; }.photo { border-radius: 14px; }.photo:nth-child(2) { transform: translateY(10px); }.time-grid { gap: 5px; }.time-unit { padding: 9px 2px; }.wish-delete { opacity: 1; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
   </style>
 </head>
 <body>
   <div class="ambient"><i class="orb one"></i><i class="orb two"></i></div>
   <div id="hearts" aria-hidden="true"></div>
+  <div class="wish-toast" id="wishToast" role="status">有人写下了新愿望 ♡</div>
 
   <main>
     <header class="hero glass">
@@ -157,9 +229,9 @@
       <h2 class="section-title">藏在时光里的片段</h2>
       <!-- ==================== 可修改：图片路径与图片说明；复制 figure 可增加照片 ==================== -->
       <div class="gallery" id="gallery">
-        <figure class="photo"><img class="photo-media" src="44C0C187A706FC900C7E1657A618F81E.jpg" alt="我们的回忆一"><figcaption>那天的风很温柔</figcaption></figure>
-        <figure class="photo"><img class="photo-media" src="7C48E35CE67184E610786CB72B12F37F.jpg" alt="我们的回忆二"><figcaption>一起看过的风景</figcaption></figure>
-        <figure class="photo"><img class="photo-media" src="7B236FCB471B1B363FC320CFD8392404.jpg" alt="我们的回忆三"><figcaption>被珍藏的笑意</figcaption></figure>
+        <figure class="photo"><img class="photo-media" src="44C0C187A706FC900C7E1657A618F81E.jpg" alt="我们的回忆一" loading="lazy" decoding="async"><figcaption>那天的风很温柔</figcaption></figure>
+        <figure class="photo"><img class="photo-media" src="7C48E35CE67184E610786CB72B12F37F.jpg" alt="我们的回忆二" loading="lazy" decoding="async"><figcaption>一起看过的风景</figcaption></figure>
+        <figure class="photo"><img class="photo-media" src="7B236FCB471B1B363FC320CFD8392404.jpg" alt="我们的回忆三" loading="lazy" decoding="async"><figcaption>被珍藏的笑意</figcaption></figure>
       </div>
     </section>
 
@@ -186,6 +258,7 @@
       <!-- ==================== 可修改：未来愿望清单 ==================== -->
       <article class="wish-card glass">
         <p class="wish-intro">把想去的地方、想一起做的小事，慢慢写在这里，等我们一件件实现。</p>
+        <input class="wish-author" id="wishAuthor" maxlength="12" placeholder="你的名字（选填，写愿望时会一起保存）" aria-label="你的名字">
         <ul class="wish-list" id="wishList">
           <li class="wish-empty" id="wishLoading">正在加载愿望清单…</li>
         </ul>
@@ -195,10 +268,15 @@
     <footer>WITH ALL MY HEART ♡</footer>
   </main>
 
+  <div class="lightbox" id="lightbox" aria-hidden="true" role="dialog" aria-label="查看大图">
+    <img src="" alt="放大查看的照片" />
+    <p class="lightbox-hint">点击任意处关闭</p>
+  </div>
+
   <script type="module">
     // Firebase SDK 导入
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
-    import { getDatabase, ref, push, update, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+    import { getDatabase, ref, push, update, remove, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
 
     // Firebase 配置
     const firebaseConfig = {
@@ -247,6 +325,43 @@
       .sort(() => Math.random() - 0.5)
       .forEach(photo => gallery.appendChild(photo));
 
+    // 照片灯箱：点击全屏查看，点击任意处或按 ESC 关闭。
+    const lightbox = document.querySelector('#lightbox');
+    const lightboxImg = lightbox.querySelector('img');
+    gallery.addEventListener('click', event => {
+      const photo = event.target.closest('.photo');
+      if (!photo) return;
+      const img = photo.querySelector('.photo-media');
+      if (!img) return;
+      lightboxImg.src = img.src;
+      lightbox.classList.add('is-open');
+      lightbox.setAttribute('aria-hidden', 'false');
+    });
+    lightbox.addEventListener('click', () => {
+      lightbox.classList.remove('is-open');
+      lightbox.setAttribute('aria-hidden', 'true');
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && lightbox.classList.contains('is-open')) {
+        lightbox.classList.remove('is-open');
+        lightbox.setAttribute('aria-hidden', 'true');
+      }
+    });
+
+    // 滚动淡入：板块进入视口时柔和显现。
+    const revealObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('main > section').forEach(section => {
+      section.classList.add('reveal');
+      revealObserver.observe(section);
+    });
+
     // 展开 / 收起隐藏的告白文字。
     const moreButton = document.querySelector('#moreButton');
     const moreLove = document.querySelector('#moreLove');
@@ -260,17 +375,59 @@
     // 愿望清单：基于 Firebase 实时数据库，所有人共享同一份愿望。
     const wishList = document.querySelector('#wishList');
     const addWish = document.querySelector('#addWish');
+    const wishAuthorInput = document.querySelector('#wishAuthor');
+    const wishToast = document.querySelector('#wishToast');
     let isUpdatingFromDB = false;
     let debounceTimer = null;
     let pendingFocusKey = null;
+    let knownWishKeys = null; // 首次加载后记录已知愿望，用于识别"别人新写的愿望"
+    let toastTimer = null;
 
-    function createWishItem(key, text = '', done = false) {
+    // 署名记住在本浏览器，下次不用再填。
+    try { wishAuthorInput.value = localStorage.getItem('romantic-author') || ''; } catch (error) { /* 忽略 */ }
+    wishAuthorInput.addEventListener('input', () => {
+      try { localStorage.setItem('romantic-author', wishAuthorInput.value.trim()); } catch (error) { /* 忽略 */ }
+    });
+    const currentAuthor = () => wishAuthorInput.value.trim().slice(0, 12);
+
+    // 勾选完成时，在方框位置绽放几颗小爱心。
+    function burstHearts(x, y) {
+      for (let i = 0; i < 7; i++) {
+        const heart = document.createElement('span');
+        heart.className = 'burst-heart';
+        heart.textContent = '♥';
+        heart.style.left = `${x}px`;
+        heart.style.top = `${y}px`;
+        heart.style.fontSize = `${10 + Math.random() * 10}px`;
+        heart.style.setProperty('--tx', `${-34 + Math.random() * 68}px`);
+        heart.style.setProperty('--ty', `${-58 - Math.random() * 34}px`);
+        heart.style.setProperty('--rot', `${-40 + Math.random() * 80}deg`);
+        document.body.appendChild(heart);
+        heart.addEventListener('animationend', () => heart.remove());
+      }
+    }
+
+    // 别人新写愿望时，顶部轻柔提示。
+    function showWishToast(author) {
+      wishToast.textContent = author ? `${author} 写下了新愿望 ♡` : '有人写下了新愿望 ♡';
+      wishToast.classList.add('is-show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => wishToast.classList.remove('is-show'), 3200);
+    }
+
+    function createWishItem(key, text = '', done = false, author = '') {
       const item = document.createElement('li');
       item.className = 'wish-item';
       item.dataset.key = key;
-      item.innerHTML = `<input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下一个想一起完成的愿望"></span>`;
+      item.innerHTML = `<input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下一个想一起完成的愿望"></span><button class="wish-delete" type="button" aria-label="删除这个愿望">×</button>`;
       item.querySelector('.wish-check').checked = done;
       item.querySelector('.wish-text').textContent = text;
+      if (author) {
+        const label = document.createElement('span');
+        label.className = 'wish-author-label';
+        label.textContent = `—— ${author}`;
+        item.appendChild(label);
+      }
       return item;
     }
 
@@ -293,11 +450,13 @@
       for (const [key, wish] of Object.entries(data)) {
         let item = wishList.querySelector(`.wish-item[data-key="${key}"]`);
         if (!item) {
-          item = createWishItem(key, wish.text || '', wish.done || false);
+          item = createWishItem(key, wish.text || '', wish.done || false, wish.author || '');
           wishList.appendChild(item);
           if (key === pendingFocusKey) {
             pendingFocusKey = null;
             requestAnimationFrame(() => item.querySelector('.wish-text').focus());
+          } else if (knownWishKeys && !knownWishKeys.has(key)) {
+            showWishToast(wish.author || '');
           }
         } else {
           const content = item.querySelector('.wish-text');
@@ -306,8 +465,19 @@
             content.textContent = wish.text || '';
           }
           check.checked = wish.done || false;
+          // 同步署名标签
+          let label = item.querySelector('.wish-author-label');
+          if (wish.author) {
+            if (!label) { label = document.createElement('span'); label.className = 'wish-author-label'; item.appendChild(label); }
+            label.textContent = `—— ${wish.author}`;
+          } else if (label) {
+            label.remove();
+          }
         }
       }
+
+      // 记录当前所有愿望 key，供下一次对比
+      knownWishKeys = new Set(keys);
 
       // 数据库为空时显示提示
       if (keys.length === 0 && !wishList.querySelector('#wishLoading')) {
@@ -330,7 +500,7 @@
       const item = event.target.closest('.wish-item');
       if (!item) return;
       const key = item.dataset.key;
-      const text = event.target.textContent;
+      const text = event.target.textContent.slice(0, 100);
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         update(ref(db, `wishes/${key}`), { text });
@@ -343,12 +513,12 @@
       const item = event.target.closest('.wish-item');
       if (!item) return;
       const key = item.dataset.key;
-      const text = event.target.textContent;
+      const text = event.target.textContent.slice(0, 100);
       clearTimeout(debounceTimer);
       update(ref(db, `wishes/${key}`), { text });
     }, true);
 
-    // 勾选/取消勾选：立即写入数据库
+    // 勾选/取消勾选：立即写入数据库；勾选完成时绽放爱心
     wishList.addEventListener('change', (event) => {
       if (isUpdatingFromDB || !event.target.classList.contains('wish-check')) return;
       const item = event.target.closest('.wish-item');
@@ -356,16 +526,45 @@
       const key = item.dataset.key;
       const done = event.target.checked;
       update(ref(db, `wishes/${key}`), { done });
+      if (done) {
+        const box = event.target.getBoundingClientRect();
+        burstHearts(box.left + box.width / 2, box.top + box.height / 2);
+      }
     });
 
-    // 添加新愿望：推送到数据库，所有页面实时同步
+    // 删除愿望：第一次点击进入确认态，2.5 秒内再点一次才真正删除，避免误触。
+    let armedDelete = null;
+    wishList.addEventListener('click', (event) => {
+      const btn = event.target.closest('.wish-delete');
+      if (!btn) return;
+      const item = btn.closest('.wish-item');
+      if (!item) return;
+      if (armedDelete === btn) {
+        clearTimeout(btn._armTimer);
+        armedDelete = null;
+        remove(ref(db, `wishes/${item.dataset.key}`));
+      } else {
+        if (armedDelete) { armedDelete.classList.remove('is-armed'); clearTimeout(armedDelete._armTimer); }
+        armedDelete = btn;
+        btn.classList.add('is-armed');
+        btn.textContent = '确认删除';
+        btn._armTimer = setTimeout(() => {
+          btn.classList.remove('is-armed');
+          btn.textContent = '×';
+          if (armedDelete === btn) armedDelete = null;
+        }, 2500);
+      }
+    });
+
+    // 添加新愿望：推送到数据库，所有页面实时同步（带上署名）。
     addWish.addEventListener('click', () => {
-      const newRef = push(wishesRef, { text: '', done: false });
+      const newRef = push(wishesRef, { text: '', done: false, author: currentAuthor() });
       pendingFocusKey = newRef.key;
     });
 
-    // 背景爱心：分批生成以降低页面负担，密度保持适中。
+    // 背景爱心：分批生成以降低页面负担；手机上更稀疏，省电省性能。
     const heartBox = document.querySelector('#hearts');
+    const isMobile = window.matchMedia('(max-width: 560px)').matches;
     function createHeart() {
       const heart = document.createElement('span');
       heart.className = 'particle-heart'; heart.textContent = '♥';
@@ -376,8 +575,8 @@
       heartBox.appendChild(heart);
       heart.addEventListener('animationend', () => heart.remove());
     }
-    for (let i = 0; i < 8; i++) setTimeout(createHeart, i * 900);
-    setInterval(createHeart, 2100);
+    for (let i = 0; i < (isMobile ? 5 : 8); i++) setTimeout(createHeart, i * (isMobile ? 1400 : 900));
+    setInterval(createHeart, isMobile ? 3200 : 2100);
 
     // 小彩蛋：点击页面任意处，会短暂绽放一颗爱心。
     document.addEventListener('click', event => {
@@ -390,6 +589,11 @@
 
     /* 可选背景音乐（默认关闭：请准备本地 music.mp3 后取消下一行注释）
     const music = new Audio('music.mp3'); music.loop = true; */
+
+    // PWA：注册 Service Worker，支持添加到主屏幕与离线缓存。
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('sw.js').catch(() => { /* 注册失败不影响页面 */ });
+    }
   </script>
 </body>
 </html>
