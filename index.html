@@ -105,6 +105,7 @@
     .wish-card { padding: clamp(27px, 5vw, 42px); }
     .wish-intro { margin: 0 0 18px; color: #927485; font: .92rem/1.8 "Microsoft YaHei", sans-serif; }
     .wish-list { padding: 0; margin: 0; list-style: none; display: grid; gap: 11px; }
+    .wish-empty { text-align: center; color: #ae96a3; padding: 18px; font-size: .9rem; border: 1px dashed rgba(169, 118, 141, .25); border-radius: 13px; background: rgba(255,255,255,.15); }
     .wish-item { display: flex; align-items: center; gap: 11px; padding: 10px 13px; border-radius: 13px; border: 1px dashed rgba(169, 118, 141, .38); background: rgba(255,255,255,.25); color: #7e6372; transition: background .25s, opacity .25s; }
     .wish-check { appearance: none; flex: 0 0 20px; width: 20px; height: 20px; margin: 0; border: 1px solid rgba(169, 118, 141, .64); border-radius: 6px; cursor: pointer; background: rgba(255,255,255,.55); display: grid; place-content: center; transition: background .2s, border-color .2s; }
     .wish-check::before { content: "✓"; color: white; font-size: .9rem; font-weight: bold; transform: scale(0); transition: transform .16s ease; }
@@ -186,9 +187,7 @@
       <article class="wish-card glass">
         <p class="wish-intro">把想去的地方、想一起做的小事，慢慢写在这里，等我们一件件实现。</p>
         <ul class="wish-list" id="wishList">
-          <li class="wish-item"><input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下第一个愿望">在这里写下第一个愿望</span></li>
-          <li class="wish-item"><input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下第二个愿望">在这里写下第二个愿望</span></li>
-          <li class="wish-item"><input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下第三个愿望">在这里写下第三个愿望</span></li>
+          <li class="wish-empty" id="wishLoading">正在加载愿望清单…</li>
         </ul>
         <button class="add-wish" id="addWish" type="button">＋ 添加一个愿望</button>
       </article>
@@ -196,7 +195,26 @@
     <footer>WITH ALL MY HEART ♡</footer>
   </main>
 
-  <script>
+  <script type="module">
+    // Firebase SDK 导入
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+    import { getDatabase, ref, push, update, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+
+    // Firebase 配置
+    const firebaseConfig = {
+      apiKey: "AIzaSyCIzJdIyEVaORcrZvwdDUOnpDXHMxSK96c",
+      authDomain: "linmo007n.firebaseapp.com",
+      databaseURL: "https://linmo007n-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "linmo007n",
+      storageBucket: "linmo007n.firebasestorage.app",
+      messagingSenderId: "677427976990",
+      appId: "1:677427976990:web:1f528a27eada09d22a470f",
+      measurementId: "G-00H3STG36Z"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const wishesRef = ref(db, 'wishes');
+
     /* ==================== 可修改：纪念日时间（格式：年, 月-1, 日, 时, 分, 秒） ====================
        例如 2023年5月20日 20:00:00 写为：new Date(2023, 4, 20, 20, 0, 0)
        注意：JavaScript 的月份从 0 开始，1月是0，12月是11。 */
@@ -239,38 +257,111 @@
       moreButton.textContent = isOpen ? '收起这份心意' : '展开更多心意';
     });
 
-    // 愿望清单：可直接编辑、点击方框完成，且自动保存在本浏览器中。
+    // 愿望清单：基于 Firebase 实时数据库，所有人共享同一份愿望。
     const wishList = document.querySelector('#wishList');
     const addWish = document.querySelector('#addWish');
-    const wishesStorageKey = 'romantic-wish-list-v1';
-    function createWishItem(text = '', done = false) {
+    let isUpdatingFromDB = false;
+    let debounceTimer = null;
+    let pendingFocusKey = null;
+
+    function createWishItem(key, text = '', done = false) {
       const item = document.createElement('li');
       item.className = 'wish-item';
+      item.dataset.key = key;
       item.innerHTML = `<input class="wish-check" type="checkbox" aria-label="标记为已完成"><span class="wish-text" contenteditable="true" role="textbox" data-placeholder="写下一个想一起完成的愿望"></span>`;
-      const check = item.querySelector('.wish-check');
-      const content = item.querySelector('.wish-text');
-      check.checked = done; content.textContent = text;
+      item.querySelector('.wish-check').checked = done;
+      item.querySelector('.wish-text').textContent = text;
       return item;
     }
-    function saveWishes() {
-      const wishes = [...wishList.querySelectorAll('.wish-item')].map(item => ({
-        text: item.querySelector('.wish-text').textContent.trim(),
-        done: item.querySelector('.wish-check').checked
-      }));
-      localStorage.setItem(wishesStorageKey, JSON.stringify(wishes));
-    }
-    try {
-      const savedWishes = JSON.parse(localStorage.getItem(wishesStorageKey));
-      if (Array.isArray(savedWishes) && savedWishes.length) {
-        wishList.replaceChildren(...savedWishes.map(wish => createWishItem(wish.text, wish.done)));
+
+    // 实时监听：数据库变化时，所有页面同步更新
+    onValue(wishesRef, (snapshot) => {
+      isUpdatingFromDB = true;
+      const data = snapshot.val() || {};
+      const keys = Object.keys(data);
+
+      // 有数据时移除加载/空状态提示
+      const loading = wishList.querySelector('#wishLoading');
+      if (loading && keys.length > 0) loading.remove();
+
+      // 移除数据库中已不存在的愿望
+      wishList.querySelectorAll('.wish-item').forEach(el => {
+        if (!data[el.dataset.key]) el.remove();
+      });
+
+      // 新增或更新愿望
+      for (const [key, wish] of Object.entries(data)) {
+        let item = wishList.querySelector(`.wish-item[data-key="${key}"]`);
+        if (!item) {
+          item = createWishItem(key, wish.text || '', wish.done || false);
+          wishList.appendChild(item);
+          if (key === pendingFocusKey) {
+            pendingFocusKey = null;
+            requestAnimationFrame(() => item.querySelector('.wish-text').focus());
+          }
+        } else {
+          const content = item.querySelector('.wish-text');
+          const check = item.querySelector('.wish-check');
+          if (document.activeElement !== content) {
+            content.textContent = wish.text || '';
+          }
+          check.checked = wish.done || false;
+        }
       }
-    } catch (error) { /* 浏览器禁用本地存储时，仍可正常编辑本页。 */ }
-    wishList.addEventListener('input', saveWishes);
-    wishList.addEventListener('change', saveWishes);
+
+      // 数据库为空时显示提示
+      if (keys.length === 0 && !wishList.querySelector('#wishLoading')) {
+        const empty = document.createElement('li');
+        empty.className = 'wish-empty';
+        empty.id = 'wishLoading';
+        empty.textContent = '还没有愿望，点击下方添加第一个吧 ♡';
+        wishList.appendChild(empty);
+      }
+
+      isUpdatingFromDB = false;
+    }, (error) => {
+      const loading = wishList.querySelector('#wishLoading');
+      if (loading) loading.textContent = '愿望清单加载失败，请检查网络 ♡';
+    });
+
+    // 编辑文字：防抖写入数据库（停止打字 400ms 后同步）
+    wishList.addEventListener('input', (event) => {
+      if (isUpdatingFromDB || !event.target.classList.contains('wish-text')) return;
+      const item = event.target.closest('.wish-item');
+      if (!item) return;
+      const key = item.dataset.key;
+      const text = event.target.textContent;
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        update(ref(db, `wishes/${key}`), { text });
+      }, 400);
+    });
+
+    // 失焦时立即同步文字
+    wishList.addEventListener('blur', (event) => {
+      if (isUpdatingFromDB || !event.target.classList.contains('wish-text')) return;
+      const item = event.target.closest('.wish-item');
+      if (!item) return;
+      const key = item.dataset.key;
+      const text = event.target.textContent;
+      clearTimeout(debounceTimer);
+      update(ref(db, `wishes/${key}`), { text });
+    }, true);
+
+    // 勾选/取消勾选：立即写入数据库
+    wishList.addEventListener('change', (event) => {
+      if (isUpdatingFromDB || !event.target.classList.contains('wish-check')) return;
+      const item = event.target.closest('.wish-item');
+      if (!item) return;
+      const key = item.dataset.key;
+      const done = event.target.checked;
+      update(ref(db, `wishes/${key}`), { done });
+    });
+
+    // 添加新愿望：推送到数据库，所有页面实时同步
     addWish.addEventListener('click', () => {
-      const item = createWishItem();
-      wishList.appendChild(item); saveWishes();
-      item.querySelector('.wish-text').focus();
+      const newRef = push(wishesRef, { text: '', done: false });
+      pendingFocusKey = newRef.key;
     });
 
     // 背景爱心：分批生成以降低页面负担，密度保持适中。
