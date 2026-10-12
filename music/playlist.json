@@ -1,4 +1,8 @@
 {
-  "comment": "使用方法：1) 把 mp3 文件放进 music/ 目录（建议用无版权音乐，如 Pixabay Music）；2) 按示例在 tracks 中登记 {title, artist, src}，src 填 music/文件名.mp3；3) 保存刷新即可，无需改代码。",
-  "tracks": []
+  "comment": "使用方法：1) 把音乐文件放进 music/ 目录；2) 按下面格式在 tracks 中登记 {title, artist, src}，src 填 music/文件名（含后缀）；3) 保存刷新即可，无需改代码。",
+  "tracks": [
+    { "title": "Rags to Rings", "artist": "Mark Petrie / Danny McCarthy", "src": "music/Mark Petrie _ Danny McCarthy - Rags to Rings.ogg" },
+    { "title": "东京不太热", "artist": "封茗囧菌", "src": "music/封茗囧菌 - 东京不太热.ogg" },
+    { "title": "BINGBIAN病变", "artist": "罗之豪", "src": "music/罗之豪 - BINGBIAN病变.ogg" }
+  ]
 }
