@@ -54,7 +54,7 @@
     .env-body::before, .env-body::after { content: ""; position: absolute; bottom: 0; width: 50%; height: 68%; background: linear-gradient(160deg, #efd0de, #e7bfd3); z-index: 2; }
     .env-body::before { left: 0; clip-path: polygon(0 0, 100% 100%, 0 100%); }
     .env-body::after { right: 0; clip-path: polygon(100% 0, 0 100%, 100% 100%); }
-    .env-wax { position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%); width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #d98aa8, #b85f82 70%); z-index: 4; display: grid; place-items: center; color: #ffe9f1; font-size: .8rem; box-shadow: 0 3px 8px rgba(150,70,100,.35); transition: opacity .4s; }
+    .env-wax { position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%); width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(217,138,168,.32), rgba(184,95,130,.24) 70%); border: 1px solid rgba(184,95,130,.4); z-index: 4; display: grid; place-items: center; color: #b56484; font-size: .8rem; box-shadow: 0 3px 8px rgba(150,70,100,.12); transition: opacity .4s; }
     .env-card.is-open .env-flap { transform: rotateX(180deg); z-index: 1; }
     .env-card.is-open .env-wax { opacity: 0; }
     .env-name { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; z-index: 5; font: .82rem "KaiTi", "STKaiti", serif; letter-spacing: .12em; color: #8c5a72; pointer-events: none; }
@@ -106,7 +106,7 @@
       .envelope { background: linear-gradient(160deg,#6a4a5e,#573c4e 60%,#4d3547); }
       .env-flap { background: linear-gradient(160deg,#5e4054,#52374a); }
       .env-body::before, .env-body::after { background: linear-gradient(160deg,#563a4d,#4c3245); }
-      .env-wax { background: radial-gradient(circle at 35% 30%,#b06a86,#8f4664 70%); }
+      .env-wax { background: radial-gradient(circle at 35% 30%, rgba(176,106,134,.3), rgba(143,70,100,.22) 70%); border-color: rgba(209,145,173,.4); color: #e2a5bd; box-shadow: 0 3px 8px rgba(0,0,0,.18); }
       .env-name { color: #d5a0b8; } .env-hint { color: #b58ea3; }
       .love-paper { background: rgba(58,46,62,.92); border-color: rgba(255,255,255,.14); }
       .love-paper h3 { color: #d5a0b8; } .love-paper p { color: #c3a8bd; } .love-paper .sign { color: #cf9db6; }
