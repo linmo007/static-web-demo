@@ -870,10 +870,7 @@
     /* 可选背景音乐（默认关闭：请准备本地 music.mp3 后取消下一行注释）
     const music = new Audio('music.mp3'); music.loop = true; */
 
-    // PWA：注册 Service Worker，支持添加到主屏幕与离线缓存。
-    if ('serviceWorker' in navigator && location.protocol === 'https:') {
-      navigator.serviceWorker.register('sw.js').catch(() => { /* 注册失败不影响页面 */ });
-    }
+    // Service Worker 的注册与自动更新由 ambient.js 统一处理。
   </script>
 </body>
 </html>

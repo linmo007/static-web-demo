@@ -109,3 +109,17 @@ if (!reduceMotion) {
     heart.addEventListener('animationend', () => heart.remove());
   });
 }
+
+/* ============ Service Worker：注册 + 新版本就绪后自动刷新一次（全站共享） ============ */
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  let swRefreshing = false;
+  // 新 SW 接管页面时自动重载，用户下次打开即为最新版本，无需手动清缓存
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (swRefreshing) return;
+    swRefreshing = true;
+    location.reload();
+  });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* 注册失败不影响页面 */ });
+  });
+}
