@@ -1,0 +1,4 @@
+{
+  "comment": "使用方法：1) 把 mp3 文件放进 music/ 目录（建议用无版权音乐，如 Pixabay Music）；2) 按示例在 tracks 中登记 {title, artist, src}，src 填 music/文件名.mp3；3) 保存刷新即可，无需改代码。",
+  "tracks": []
+}

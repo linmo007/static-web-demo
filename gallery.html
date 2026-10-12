@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6e8f1" />
+  <meta property="og:title" content="时光相册 · 写给你的温柔心事" />
+  <meta property="og:description" content="把一起走过的时光，一张张贴进这本手账里。" />
+  <meta property="og:type" content="website" />
+  <title>时光相册 · 写给你的温柔心事</title>
+  <style>
+    :root {
+      --pink: #f6dce9; --lavender: #e5def7; --cream: #fffafc;
+      --ink: #625564; --accent: #bd879e; --card: rgba(255,255,255,.43); --line: rgba(255,255,255,.65);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-width: 320px; color: var(--ink);
+      font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: linear-gradient(125deg, var(--pink), #f8edf4, var(--lavender), #f4e5ee);
+      background-size: 300% 300%; animation: backgroundFlow 16s ease-in-out infinite, pageIn 1.5s ease-out;
+      overflow-x: hidden;
+    }
+    @keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes backgroundFlow { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    .ambient { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: -2; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(4px); opacity: .43; animation: drift 12s ease-in-out infinite alternate; }
+    .orb.one { width: 38vw; height: 38vw; min-width: 280px; min-height: 280px; background: rgba(255,255,255,.42); top: -14%; left: -10%; }
+    .orb.two { width: 29vw; height: 29vw; min-width: 220px; min-height: 220px; background: rgba(217,198,246,.56); right: -8%; bottom: 2%; animation-delay: -5s; }
+    @keyframes drift { to { transform: translate(3vw,3vh) scale(1.08); } }
+
+    main { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 72px 0 48px; }
+    .glass {
+      background: var(--card); border: 1px solid var(--line);
+      box-shadow: 0 18px 54px rgba(118,78,113,.13), inset 0 1px 0 rgba(255,255,255,.55);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-radius: 28px;
+    }
+    .page-head { padding: clamp(30px,6vw,52px) 28px; text-align: center; margin-bottom: 30px; }
+    .eyebrow { margin: 0 0 14px; font-size: .74rem; letter-spacing: .25em; color: #9c748a; }
+    h1 { margin: 0; font: 400 clamp(1.9rem,5.5vw,3.2rem)/1.2 Georgia, "Songti SC", serif; letter-spacing: .1em; color: #796072; }
+    .page-head p { margin: 18px auto 0; max-width: 32em; font-size: .95rem; line-height: 1.9; color: #826d7d; }
+
+    .year-block { margin: 0 0 38px; }
+    .year-title { display: flex; align-items: center; gap: 14px; margin: 0 0 20px 6px; font: 400 1.5rem Georgia, "Songti SC", serif; color: #856376; letter-spacing: .12em; }
+    .year-title::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(169,118,141,.4), transparent); }
+    .year-title .year-badge { display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.45); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 8px 20px rgba(118,78,113,.12); font-size: 1.05rem; color: #9f6f85; }
+
+    /* 手账照片墙 */
+    .scrap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px 18px; }
+    .scrap { position: relative; margin: 0; padding: 10px 10px 30px; background: rgba(255,253,250,.92); border-radius: 6px; box-shadow: 0 14px 30px rgba(118,78,113,.18); transition: transform .45s cubic-bezier(.2,.8,.2,1), box-shadow .45s; cursor: zoom-in; }
+    .scrap:nth-child(3n+1) { transform: rotate(-2.2deg); }
+    .scrap:nth-child(3n+2) { transform: rotate(1.6deg) translateY(14px); }
+    .scrap:nth-child(3n) { transform: rotate(-1deg); }
+    .scrap:hover { transform: rotate(0deg) translateY(-9px) scale(1.03); box-shadow: 0 26px 46px rgba(118,78,113,.28); z-index: 2; }
+    .scrap img { display: block; width: 100%; aspect-ratio: 1/1.05; object-fit: cover; border-radius: 4px; background: linear-gradient(145deg,#eed6e2,#ded5ee); }
+    .scrap figcaption { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font: italic .78rem "Segoe Script", "Comic Sans MS", "KaiTi", cursive; color: #a3798f; }
+    /* 胶带贴纸 */
+    .scrap .tape { position: absolute; top: -11px; left: 50%; width: 86px; height: 24px; transform: translateX(-50%) rotate(-3deg); background: rgba(243,182,207,.55); border-left: 1px dashed rgba(255,255,255,.5); border-right: 1px dashed rgba(255,255,255,.5); box-shadow: 0 2px 5px rgba(118,78,113,.1); pointer-events: none; }
+    .scrap:nth-child(3n+1) .tape { background: rgba(217,198,246,.6); transform: translateX(-50%) rotate(4deg); }
+    .scrap:nth-child(3n) .tape { background: rgba(255,228,210,.65); transform: translateX(-50%) rotate(-6deg); }
+    /* 回形针 */
+    .scrap .clip { position: absolute; top: -6px; right: 10px; font-size: 26px; color: rgba(169,144,158,.7); transform: rotate(18deg); pointer-events: none; }
+
+    .back-link { display: inline-block; margin: 6px 0 0 6px; text-decoration: none; color: #a17187; font: .86rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; }
+    .back-link:hover { color: #9b5f7d; }
+    footer { text-align: center; padding: 24px 0 6px; font: .84rem Georgia, serif; letter-spacing: .12em; color: rgba(111,83,102,.7); }
+
+    /* 灯箱 */
+    .lightbox { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; background: rgba(46,32,44,.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; visibility: hidden; transition: opacity .35s ease, visibility .35s; cursor: zoom-out; }
+    .lightbox.is-open { opacity: 1; visibility: visible; }
+    .lightbox img { max-width: min(92vw,1000px); max-height: 84vh; border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,.45); transform: scale(.92); transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+    .lightbox.is-open img { transform: scale(1); }
+    .lightbox-hint { position: absolute; bottom: 26px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,.66); font: .8rem "Microsoft YaHei", sans-serif; letter-spacing: .1em; }
+
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+    .reveal.is-visible { opacity: 1; transform: none; }
+
+    @media (prefers-color-scheme: dark) {
+      :root { --pink:#3a2c3e; --lavender:#332b46; --ink:#d5c2d2; --card:rgba(52,42,58,.52); --line:rgba(255,255,255,.14); }
+      body { background: linear-gradient(125deg,var(--pink),#2f2536,var(--lavender),#2c2135); color: var(--ink); }
+      .orb.one { background: rgba(255,255,255,.1); } .orb.two { background: rgba(150,110,200,.22); }
+      .eyebrow { color: #b98fa6; } h1 { color: #e3cddd; } .page-head p { color: #b49cae; }
+      .year-title { color: #cba6ba; } .year-badge { background: rgba(255,255,255,.08); color: #d5a0b8; }
+      .scrap { background: rgba(58,46,62,.92); box-shadow: 0 14px 30px rgba(0,0,0,.4); }
+      .scrap figcaption { color: #b58ea3; } .back-link { color: #cf9db6; }
+      footer { color: rgba(213,194,210,.6); }
+    }
+    @media (max-width: 560px) {
+      main { width: min(100% - 24px, 920px); padding-top: 44px; }
+      .scrap-grid { grid-template-columns: repeat(2, 1fr); gap: 20px 12px; }
+      .scrap:nth-child(3n+2) { transform: rotate(1.6deg) translateY(10px); }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <div class="ambient"><i class="orb one"></i><i class="orb two"></i></div>
+
+  <main>
+    <header class="page-head glass reveal">
+      <p class="eyebrow">OUR MEMORIES</p>
+      <h1>时光相册</h1>
+      <p>把一起走过的时光，一张张贴进这本手账里。<br>每一张都是我想反复回去的瞬间。</p>
+    </header>
+
+    <!-- ==================== 可修改：按年份复制整个 .year-block，在 .scrap-grid 中增删 figure 即可 ==================== -->
+    <section class="year-block reveal">
+      <h2 class="year-title"><span class="year-badge">2023</span>故事开始的那一年</h2>
+      <div class="scrap-grid">
+        <figure class="scrap"><span class="tape"></span><span class="clip">📎</span><img src="44C0C187A706FC900C7E1657A618F81E.jpg" alt="2023 年的回忆一" loading="lazy" decoding="async"><figcaption>the day we met</figcaption></figure>
+        <figure class="scrap"><span class="tape"></span><img src="7C48E35CE67184E610786CB72B12F37F.jpg" alt="2023 年的回忆二" loading="lazy" decoding="async"><figcaption>first trip ♡</figcaption></figure>
+        <figure class="scrap"><span class="tape"></span><span class="clip">📎</span><img src="7B236FCB471B1B363FC320CFD8392404.jpg" alt="2023 年的回忆三" loading="lazy" decoding="async"><figcaption>soft sunset</figcaption></figure>
+      </div>
+    </section>
+
+    <section class="year-block reveal">
+      <h2 class="year-title"><span class="year-badge">2024</span>把平凡过成喜欢的样子</h2>
+      <div class="scrap-grid">
+        <figure class="scrap"><span class="tape"></span><img src="7B236FCB471B1B363FC320CFD8392404.jpg" alt="2024 年的回忆一" loading="lazy" decoding="async"><figcaption>ordinary days</figcaption></figure>
+        <figure class="scrap"><span class="tape"></span><span class="clip">📎</span><img src="44C0C187A706FC900C7E1657A618F81E.jpg" alt="2024 年的回忆二" loading="lazy" decoding="async"><figcaption>your smile</figcaption></figure>
+      </div>
+    </section>
+
+    <section class="year-block reveal">
+      <h2 class="year-title"><span class="year-badge">2025</span>未完待续……</h2>
+      <div class="scrap-grid">
+        <figure class="scrap"><span class="tape"></span><img src="7C48E35CE67184E610786CB72B12F37F.jpg" alt="2025 年的回忆" loading="lazy" decoding="async"><figcaption>to be continued ✧</figcaption></figure>
+      </div>
+    </section>
+
+    <a class="back-link" href="index.html">♡ 回到开场</a>
+    <footer>WITH ALL MY HEART ♡</footer>
+  </main>
+
+  <div class="lightbox" id="lightbox" aria-hidden="true" role="dialog" aria-label="查看大图">
+    <img src="" alt="放大查看的照片" />
+    <p class="lightbox-hint">点击任意处关闭</p>
+  </div>
+
+  <script type="module" src="nav.js"></script>
+  <script type="module" src="player.js"></script>
+  <script type="module" src="ambient.js"></script>
+  <script type="module">
+    // 灯箱：点击照片放大，点击任意处或 ESC 关闭。
+    const lightbox = document.querySelector('#lightbox');
+    const lightboxImg = lightbox.querySelector('img');
+    document.querySelectorAll('.scrap-grid').forEach(grid => {
+      grid.addEventListener('click', event => {
+        const scrap = event.target.closest('.scrap');
+        if (!scrap) return;
+        lightboxImg.src = scrap.querySelector('img').src;
+        lightbox.classList.add('is-open');
+        lightbox.setAttribute('aria-hidden', 'false');
+      });
+    });
+    lightbox.addEventListener('click', () => {
+      lightbox.classList.remove('is-open');
+      lightbox.setAttribute('aria-hidden', 'true');
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        lightbox.classList.remove('is-open');
+        lightbox.setAttribute('aria-hidden', 'true');
+      }
+    });
+
+    // 滚动淡入
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) { entry.target.classList.add('is-visible'); io.unobserve(entry.target); }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

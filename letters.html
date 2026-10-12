@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6e8f1" />
+  <meta property="og:title" content="情书珍藏 · 写给你的温柔心事" />
+  <meta property="og:description" content="写给此刻的你，也写给未来的我们。" />
+  <meta property="og:type" content="website" />
+  <title>情书珍藏 · 写给你的温柔心事</title>
+  <style>
+    :root {
+      --pink: #f6dce9; --lavender: #e5def7; --cream: #fffafc;
+      --ink: #625564; --accent: #bd879e; --card: rgba(255,255,255,.43); --line: rgba(255,255,255,.65);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-width: 320px; color: var(--ink);
+      font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: linear-gradient(125deg, var(--pink), #f8edf4, var(--lavender), #f4e5ee);
+      background-size: 300% 300%; animation: backgroundFlow 16s ease-in-out infinite, pageIn 1.5s ease-out;
+      overflow-x: hidden;
+    }
+    @keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes backgroundFlow { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    .ambient { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: -2; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(4px); opacity: .43; animation: drift 12s ease-in-out infinite alternate; }
+    .orb.one { width: 38vw; height: 38vw; min-width: 280px; min-height: 280px; background: rgba(255,255,255,.42); top: -14%; left: -10%; }
+    .orb.two { width: 29vw; height: 29vw; min-width: 220px; min-height: 220px; background: rgba(217,198,246,.56); right: -8%; bottom: 2%; animation-delay: -5s; }
+    @keyframes drift { to { transform: translate(3vw,3vh) scale(1.08); } }
+
+    main { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 72px 0 48px; }
+    .glass {
+      background: var(--card); border: 1px solid var(--line);
+      box-shadow: 0 18px 54px rgba(118,78,113,.13), inset 0 1px 0 rgba(255,255,255,.55);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-radius: 28px;
+    }
+    .page-head { padding: clamp(30px,6vw,52px) 28px; text-align: center; margin-bottom: 30px; }
+    .eyebrow { margin: 0 0 14px; font-size: .74rem; letter-spacing: .25em; color: #9c748a; }
+    h1 { margin: 0; font: 400 clamp(1.9rem,5.5vw,3.2rem)/1.2 Georgia, "Songti SC", serif; letter-spacing: .1em; color: #796072; }
+    .page-head p { margin: 18px auto 0; max-width: 32em; font-size: .95rem; line-height: 1.9; color: #826d7d; }
+    section { margin: 28px 0; }
+    .section-title { font: 400 1.35rem Georgia, "Songti SC", serif; letter-spacing: .13em; color: #856376; margin: 0 0 17px 9px; }
+    .back-link { display: inline-block; margin: 6px 0 0 6px; text-decoration: none; color: #a17187; font: .86rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; }
+    .back-link:hover { color: #9b5f7d; }
+    footer { text-align: center; padding: 24px 0 6px; font: .84rem Georgia, serif; letter-spacing: .12em; color: rgba(111,83,102,.7); }
+
+    /* ============ 信封 ============ */
+    .envelope-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .env-card { padding: 0; border: none; font: inherit; cursor: pointer; text-align: left; background: transparent; perspective: 900px; }
+    .envelope { position: relative; aspect-ratio: 3/2; border-radius: 12px; background: linear-gradient(160deg, #f3cddd, #e3bcd1 60%, #d9b3cf); box-shadow: 0 14px 30px rgba(118,78,113,.2); overflow: hidden; transition: transform .45s cubic-bezier(.2,.8,.2,1), box-shadow .45s; }
+    .env-card:hover .envelope { transform: translateY(-6px); box-shadow: 0 22px 40px rgba(118,78,113,.28); }
+    .env-flap { position: absolute; top: 0; left: 0; width: 100%; height: 62%; background: linear-gradient(160deg, #eec3d6, #e3abc5); clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top center; transition: transform .7s cubic-bezier(.5,0,.3,1); z-index: 3; }
+    .env-body::before, .env-body::after { content: ""; position: absolute; bottom: 0; width: 50%; height: 68%; background: linear-gradient(160deg, #efd0de, #e7bfd3); z-index: 2; }
+    .env-body::before { left: 0; clip-path: polygon(0 0, 100% 100%, 0 100%); }
+    .env-body::after { right: 0; clip-path: polygon(100% 0, 0 100%, 100% 100%); }
+    .env-wax { position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%); width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #d98aa8, #b85f82 70%); z-index: 4; display: grid; place-items: center; color: #ffe9f1; font-size: .8rem; box-shadow: 0 3px 8px rgba(150,70,100,.35); transition: opacity .4s; }
+    .env-card.is-open .env-flap { transform: rotateX(180deg); z-index: 1; }
+    .env-card.is-open .env-wax { opacity: 0; }
+    .env-name { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; z-index: 5; font: .82rem "KaiTi", "STKaiti", serif; letter-spacing: .12em; color: #8c5a72; pointer-events: none; }
+    .env-hint { margin-top: 12px; text-align: center; font-size: .8rem; color: #a17187; letter-spacing: .06em; }
+    .env-card.is-open .env-hint { color: #b58ca0; }
+
+    /* 抽出的信纸 */
+    .love-paper { margin-top: 14px; padding: 22px 24px; border-radius: 14px; background: rgba(255,253,250,.92); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 14px 30px rgba(118,78,113,.16); max-height: 0; opacity: 0; overflow: hidden; transition: max-height .7s ease, opacity .6s ease, padding .6s ease; padding-top: 0; padding-bottom: 0; }
+    .env-card.is-open .love-paper { max-height: 520px; opacity: 1; padding: 22px 24px; }
+    .love-paper h3 { margin: 0 0 10px; font: 400 1.05rem "KaiTi", "STKaiti", serif; color: #9b5f7d; letter-spacing: .1em; }
+    .love-paper p { margin: 0 0 .8em; font-family: "KaiTi", "STKaiti", "FangSong", serif; font-size: 1rem; line-height: 2; letter-spacing: .06em; color: #705b69; white-space: pre-wrap; }
+    .love-paper .sign { text-align: right; margin: 8px 0 0; color: #a36d85; }
+
+    /* ============ 时光信箱 ============ */
+    .mailbox { padding: clamp(26px,5vw,40px); }
+    .mail-form { display: grid; gap: 12px; margin-bottom: 22px; }
+    .mail-form textarea { width: 100%; min-height: 110px; resize: vertical; padding: 13px 15px; border-radius: 14px; border: 1px dashed rgba(169,118,141,.45); outline: none; resize: vertical; background: rgba(255,255,255,.4); color: #705b69; font: 1rem/1.9 "KaiTi", "STKaiti", serif; }
+    .mail-form textarea:focus { background: rgba(255,255,255,.62); }
+    .mail-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .mail-row input { flex: 1; min-width: 150px; padding: 10px 13px; border-radius: 11px; border: 1px dashed rgba(169,118,141,.45); outline: none; background: rgba(255,255,255,.4); color: #7e6372; font: .88rem "Microsoft YaHei", sans-serif; }
+    .mail-row input:focus { background: rgba(255,255,255,.6); }
+    .mail-submit { padding: 10px 22px; border: none; border-radius: 99px; cursor: pointer; background: linear-gradient(135deg, #e8b7cb, #bd879e); color: #fff; font: .88rem "Microsoft YaHei", sans-serif; letter-spacing: .1em; box-shadow: 0 8px 20px rgba(160,111,135,.28); transition: transform .25s, box-shadow .25s; }
+    .mail-submit:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(160,111,135,.36); }
+    .mail-note { margin: 0; font-size: .76rem; color: #a9909e; line-height: 1.7; }
+
+    .future-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 13px; }
+    .future-item { border-radius: 15px; border: 1px dashed rgba(169,118,141,.4); background: rgba(255,255,255,.28); padding: 15px 17px; position: relative; }
+    .future-item.is-ready { border-style: solid; border-color: rgba(189,135,158,.55); background: rgba(255,255,255,.42); }
+    .future-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .future-date { font: .92rem "KaiTi", serif; color: #9b5f7d; letter-spacing: .06em; }
+    .future-author { font-size: .74rem; color: #a9909e; }
+    .future-count { font-size: .76rem; color: #b58ca0; }
+    .future-actions { margin-left: auto; display: flex; gap: 8px; }
+    .future-actions button { border: 1px solid rgba(189,135,158,.4); border-radius: 99px; padding: 5px 14px; cursor: pointer; background: rgba(255,255,255,.5); color: #9b5f7d; font: .78rem "Microsoft YaHei", sans-serif; }
+    .future-actions button:hover { background: rgba(255,255,255,.85); }
+    .future-actions .f-del { border-color: transparent; background: transparent; color: rgba(161,113,135,.45); padding: 5px 9px; }
+    .future-content { margin: 12px 0 0; padding-top: 12px; border-top: 1px dashed rgba(169,118,141,.3); font: 1rem/2 "KaiTi", "STKaiti", serif; color: #705b69; white-space: pre-wrap; }
+    .future-empty { text-align: center; color: #ae96a3; padding: 20px; font-size: .88rem; border: 1px dashed rgba(169,118,141,.25); border-radius: 13px; background: rgba(255,255,255,.15); }
+
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+    .reveal.is-visible { opacity: 1; transform: none; }
+
+    @media (prefers-color-scheme: dark) {
+      :root { --pink:#3a2c3e; --lavender:#332b46; --ink:#d5c2d2; --card:rgba(52,42,58,.52); --line:rgba(255,255,255,.14); }
+      body { background: linear-gradient(125deg,var(--pink),#2f2536,var(--lavender),#2c2135); color: var(--ink); }
+      .orb.one { background: rgba(255,255,255,.1); } .orb.two { background: rgba(150,110,200,.22); }
+      .eyebrow { color: #b98fa6; } h1 { color: #e3cddd; } .page-head p { color: #b49cae; }
+      .section-title { color: #cba6ba; }
+      .envelope { background: linear-gradient(160deg,#6a4a5e,#573c4e 60%,#4d3547); }
+      .env-flap { background: linear-gradient(160deg,#5e4054,#52374a); }
+      .env-body::before, .env-body::after { background: linear-gradient(160deg,#563a4d,#4c3245); }
+      .env-wax { background: radial-gradient(circle at 35% 30%,#b06a86,#8f4664 70%); }
+      .env-name { color: #d5a0b8; } .env-hint { color: #b58ea3; }
+      .love-paper { background: rgba(58,46,62,.92); border-color: rgba(255,255,255,.14); }
+      .love-paper h3 { color: #d5a0b8; } .love-paper p { color: #c3a8bd; } .love-paper .sign { color: #cf9db6; }
+      .mail-form textarea { background: rgba(255,255,255,.07); border-color: rgba(209,145,173,.35); color: #c3a8bd; }
+      .mail-form textarea:focus { background: rgba(255,255,255,.12); }
+      .mail-row input { background: rgba(255,255,255,.07); border-color: rgba(209,145,173,.35); color: #c3a8bd; }
+      .mail-note, .future-author { color: #8d7386; } .future-date { color: #d5a0b8; } .future-count { color: #a97e97; }
+      .future-item { background: rgba(255,255,255,.06); border-color: rgba(209,145,173,.3); }
+      .future-item.is-ready { background: rgba(255,255,255,.1); border-color: rgba(209,145,173,.5); }
+      .future-actions button { background: rgba(255,255,255,.1); border-color: rgba(209,145,173,.35); color: #d5a0b8; }
+      .future-content { color: #c3a8bd; border-color: rgba(209,145,173,.25); }
+      .future-empty { background: rgba(255,255,255,.05); color: #8d7386; border-color: rgba(209,145,173,.2); }
+      .back-link { color: #cf9db6; } footer { color: rgba(213,194,210,.6); }
+    }
+    @media (max-width: 700px) { .envelope-grid { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <div class="ambient"><i class="orb one"></i><i class="orb two"></i></div>
+
+  <main>
+    <header class="page-head glass reveal">
+      <p class="eyebrow">LOVE LETTERS</p>
+      <h1>情书珍藏</h1>
+      <p>有些话适合写在纸上，等一个合适的日子，慢慢拆开。</p>
+    </header>
+
+    <!-- ==================== 可修改：情书内容（复制 .env-card 可增加） ==================== -->
+    <section class="reveal">
+      <h2 class="section-title">写给此刻的你</h2>
+      <div class="envelope-grid">
+        <article class="env-card" role="button" tabindex="0" aria-expanded="false">
+          <span class="envelope">
+            <span class="env-flap"></span><span class="env-body"></span>
+            <span class="env-wax">♡</span><span class="env-name">初见</span>
+          </span>
+          <span class="env-hint">轻触拆封</span>
+          <div class="love-paper">
+            <h3>致 · 初见的你</h3>
+            <p>那天的风、光线和你的笑容，我到现在都还记得清清楚楚。</p>
+            <p>原来真的会有一个人，只需要出现一下，就让普通的日子有了回声。</p>
+            <p class="sign">—— 李爱民</p>
+          </div>
+        </article>
+        <article class="env-card" role="button" tabindex="0" aria-expanded="false">
+          <span class="envelope">
+            <span class="env-flap"></span><span class="env-body"></span>
+            <span class="env-wax">♡</span><span class="env-name">四季</span>
+          </span>
+          <span class="env-hint">轻触拆封</span>
+          <div class="love-paper">
+            <h3>致 · 一起走过的四季</h3>
+            <p>春天想和你看花，夏天想和你吹风，秋天踩一地落叶，冬天把手揣进同一个口袋。</p>
+            <p>四季轮换，而我身边的人，一直是你就好。</p>
+            <p class="sign">—— 李爱民</p>
+          </div>
+        </article>
+        <article class="env-card" role="button" tabindex="0" aria-expanded="false">
+          <span class="envelope">
+            <span class="env-flap"></span><span class="env-body"></span>
+            <span class="env-wax">♡</span><span class="env-name">今夜</span>
+          </span>
+          <span class="env-hint">轻触拆封</span>
+          <div class="love-paper">
+            <h3>致 · 今夜的你</h3>
+            <p>如果今天有点累，那就把烦心事都交给我。</p>
+            <p>你可以永远相信，有一个人会一直站在你这边，像星星守着夜晚。</p>
+            <p class="sign">—— 李爱民</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 时光信箱：写给未来的信，到期才可拆封 -->
+    <section class="reveal">
+      <h2 class="section-title">时光信箱</h2>
+      <div class="mailbox glass">
+        <form class="mail-form" id="mailForm">
+          <textarea id="mailContent" maxlength="600" required placeholder="写一封给未来的信吧：想说的话、小小的愿望、到那天再揭晓的秘密……（600 字以内）"></textarea>
+          <div class="mail-row">
+            <input type="date" id="mailDate" required aria-label="开启日期">
+            <input type="text" id="mailAuthor" maxlength="12" placeholder="署名（选填）" aria-label="署名">
+            <button class="mail-submit" type="submit">封入信箱 ♡</button>
+          </div>
+          <p class="mail-note">信件会被好好保管，只有到了你选定的那一天，才可以拆开。</p>
+        </form>
+        <ul class="future-list" id="futureList">
+          <li class="future-empty">信箱还是空的，写第一封给未来的信吧 ♡</li>
+        </ul>
+      </div>
+    </section>
+
+    <a class="back-link" href="index.html">♡ 回到开场</a>
+    <footer>WITH ALL MY HEART ♡</footer>
+  </main>
+
+  <script type="module" src="nav.js"></script>
+  <script type="module" src="player.js"></script>
+  <script type="module" src="ambient.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+    import { getDatabase, ref, push, remove, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+    import { sfx } from './sfx.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCIzJdIyEVaORcrZvwdDUOnpDXHMxSK96c",
+      authDomain: "linmo007n.firebaseapp.com",
+      databaseURL: "https://linmo007n-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "linmo007n",
+      storageBucket: "linmo007n.firebasestorage.app",
+      messagingSenderId: "677427976990",
+      appId: "1:677427976990:web:1f528a27eada09d22a470f"
+    };
+    const db = getDatabase(initializeApp(firebaseConfig));
+    const lettersRef = ref(db, 'future-letters');
+
+    // 情书拆封动画（支持鼠标点击与键盘 Enter/空格）
+    const toggleEnvelope = card => {
+      const open = card.classList.toggle('is-open');
+      card.setAttribute('aria-expanded', String(open));
+      card.querySelector('.env-hint').textContent = open ? '已经拆开啦 ♡' : '轻触拆封';
+      if (open) sfx.page();
+    };
+    document.querySelectorAll('.env-card').forEach(card => {
+      card.addEventListener('click', () => toggleEnvelope(card));
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggleEnvelope(card);
+        }
+      });
+    });
+
+    // 时光信箱
+    const form = document.querySelector('#mailForm');
+    const contentInput = document.querySelector('#mailContent');
+    const dateInput = document.querySelector('#mailDate');
+    const authorInput = document.querySelector('#mailAuthor');
+    const listEl = document.querySelector('#futureList');
+    const openedKey = new Set();
+
+    // 日期下限：明天
+    const tomorrow = new Date(Date.now() + 86400000);
+    dateInput.min = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+    try { authorInput.value = localStorage.getItem('romantic-author') || ''; } catch {}
+
+    const todayStr = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const daysUntil = dateStr => Math.round((new Date(dateStr + 'T00:00:00') - new Date(todayStr() + 'T00:00:00')) / 86400000);
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const content = contentInput.value.trim();
+      const openDate = dateInput.value;
+      if (!content || !openDate) return;
+      if (daysUntil(openDate) < 1) { dateInput.focus(); return; }
+      const author = authorInput.value.trim().slice(0, 12);
+      try { localStorage.setItem('romantic-author', author); } catch {}
+      push(lettersRef, { content, openDate, author, createdAt: Date.now() });
+      sfx.ding();
+      contentInput.value = '';
+      dateInput.value = '';
+    });
+
+    function renderList(data) {
+      const entries = Object.entries(data || {}).sort((a, b) => (a[1].openDate || '').localeCompare(b[1].openDate || ''));
+      listEl.innerHTML = '';
+      if (!entries.length) {
+        listEl.innerHTML = '<li class="future-empty">信箱还是空的，写第一封给未来的信吧 ♡</li>';
+        return;
+      }
+      const today = todayStr();
+      entries.forEach(([key, letter]) => {
+        const ready = letter.openDate <= today;
+        const remain = daysUntil(letter.openDate);
+        const li = document.createElement('li');
+        li.className = 'future-item' + (ready ? ' is-ready' : '');
+        li.dataset.key = key;
+        li.innerHTML = `
+          <div class="future-meta">
+            <span class="future-date">${ready ? '✉ 已到开启之日' : '🔒 ' + letter.openDate + ' 开启'}</span>
+            ${letter.author ? `<span class="future-author">—— ${letter.author}</span>` : ''}
+            ${!ready ? `<span class="future-count">还有 ${remain} 天</span>` : ''}
+            <span class="future-actions">
+              ${ready ? '<button type="button" class="f-open">拆开这封信</button>' : ''}
+              <button type="button" class="f-del" aria-label="删除">×</button>
+            </span>
+          </div>`;
+        if (ready && openedKey.has(key)) {
+          const p = document.createElement('p');
+          p.className = 'future-content';
+          p.textContent = letter.content;
+          li.appendChild(p);
+          li.querySelector('.f-open').textContent = '收起来';
+        }
+        listEl.appendChild(li);
+      });
+    }
+
+    listEl.addEventListener('click', event => {
+      const li = event.target.closest('.future-item');
+      if (!li) return;
+      if (event.target.classList.contains('f-open')) {
+        sfx.page();
+        if (openedKey.has(li.dataset.key)) {
+          openedKey.delete(li.dataset.key);
+          onValueRefresh();
+        } else {
+          openedKey.add(li.dataset.key);
+          onValueRefresh();
+        }
+      }
+      if (event.target.classList.contains('f-del')) {
+        const btn = event.target;
+        if (btn.dataset.armed === '1') {
+          remove(ref(db, `future-letters/${li.dataset.key}`));
+          sfx.pop();
+        } else {
+          btn.dataset.armed = '1';
+          btn.textContent = '确认？';
+          setTimeout(() => { btn.dataset.armed = ''; btn.textContent = '×'; }, 2500);
+        }
+      }
+    });
+
+    let cached = {};
+    function onValueRefresh() { renderList(cached); }
+    onValue(lettersRef, snapshot => { cached = snapshot.val() || {}; renderList(cached); },
+      () => { listEl.innerHTML = '<li class="future-empty">信箱暂时连不上（可能尚未开启时光信箱权限），请稍后再试 ♡</li>'; });
+
+    // 滚动淡入
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) { entry.target.classList.add('is-visible'); io.unobserve(entry.target); }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

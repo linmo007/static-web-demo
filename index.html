@@ -211,6 +211,61 @@
       }
     }
 
+    /* ============ 四季主题粒子：按月份切换（春樱/夏萤/秋叶/冬雪，纪念日与 520/情人节时为爱心） ============ */
+    #hearts .p-fall { position: absolute; top: -8vh; animation: petalFall linear forwards; will-change: transform, opacity; }
+    #hearts .p-fall i { display: block; font-style: normal; animation: petalSway ease-in-out infinite alternate; will-change: transform; }
+    @keyframes petalFall {
+      0% { transform: translate3d(0, -2vh, 0); opacity: 0; }
+      10% { opacity: .85; }
+      88% { opacity: .55; }
+      100% { transform: translate3d(var(--drift, 6vw), 110vh, 0); opacity: 0; }
+    }
+    @keyframes petalSway {
+      from { transform: translateX(calc(var(--sway, 26px) * -1)) rotate(calc(var(--rot, 240deg) * .3)); }
+      to { transform: translateX(var(--sway, 26px)) rotate(var(--rot, 240deg)); }
+    }
+    #hearts .p-fire { position: absolute; color: #ffe9a8; text-shadow: 0 0 10px #ffdf80, 0 0 24px rgba(255, 214, 110, .75); animation: fireflyFloat ease-in-out forwards; will-change: transform, opacity; }
+    @keyframes fireflyFloat {
+      0% { transform: translate3d(0, 0, 0); opacity: 0; }
+      14% { opacity: .9; }
+      32% { transform: translate3d(3vw, -9vh, 0); opacity: .25; }
+      54% { opacity: .85; }
+      78% { transform: translate3d(-2vw, -17vh, 0); opacity: .22; }
+      100% { transform: translate3d(1.2vw, -26vh, 0); opacity: 0; }
+    }
+
+    /* ============ 线条人物：住进两侧背景（≥1200px，视线在内容中轴相遇） ============ */
+    .couple-layer { display: none; }
+    @media (min-width: 1200px) {
+      .couple-layer { display: block; position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+      .couple { position: absolute; bottom: 0; pointer-events: auto; animation: coupleBreath 6s ease-in-out infinite; }
+      .couple-woman { animation-delay: -3s; }
+      .couple img { display: block; height: 60vh; width: auto; object-fit: contain; object-position: bottom; opacity: .32; transition: opacity .6s ease, transform .9s cubic-bezier(.2,.8,.2,1); filter: drop-shadow(0 0 20px rgba(255,255,255,.22)); }
+      .couple:hover img { opacity: .6; }
+      .couple-man { left: max(4px, calc((100vw - 920px) / 2 - 320px)); }
+      .couple-woman { right: max(4px, calc((100vw - 920px) / 2 - 330px)); }
+      .couple-woman img { height: 64vh; }
+      /* 纪念日：两人向中轴轻轻靠近 */
+      .couple-layer.is-anniversary .couple-man img { transform: translateX(5vw); }
+      .couple-layer.is-anniversary .couple-woman img { transform: translateX(-5vw); }
+      .couple-spark { position: absolute; left: 50%; bottom: 13vh; transform: translateX(-50%); color: #ffd9e8; font-size: 22px; text-shadow: 0 0 14px #ffc2dc, 0 0 34px rgba(255,194,220,.8); animation: twinkle 2.4s ease-in-out infinite; }
+      @keyframes coupleBreath { 50% { transform: scale(1.008); } }
+      .couple .say { position: absolute; top: 8px; left: 50%; transform: translate(-50%, 8px); padding: 7px 14px; border-radius: 12px; background: rgba(255,250,252,.92); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 8px 22px rgba(118,78,113,.2); color: #9b5f7d; font: .78rem "Microsoft YaHei", sans-serif; letter-spacing: .06em; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .45s ease, transform .45s ease; }
+      .couple.is-saying .say { opacity: 1; transform: translate(-50%, 0); }
+      .couple-heart { position: fixed; left: 50%; top: 54%; z-index: 5; color: #c984a0; font-size: 46px; pointer-events: none; text-shadow: 0 6px 18px rgba(190,105,139,.4); animation: coupleHeartRise 2.6s ease-out forwards; }
+      @keyframes coupleHeartRise {
+        0% { opacity: 0; transform: translate(-50%, -26%) scale(.4); }
+        25% { opacity: .95; }
+        100% { opacity: 0; transform: translate(-50%, -150%) scale(1.5); }
+      }
+    }
+
+    /* ============ 打字机情书：展开后文字逐字浮现 ============ */
+    .more-love p .t { opacity: 0; animation: typeIn .06s steps(1) forwards; }
+    @keyframes typeIn { to { opacity: 1; } }
+    .type-caret { display: inline-block; margin-left: 2px; color: #bd879e; animation: caretBlink .8s steps(1) infinite; }
+    @keyframes caretBlink { 50% { opacity: 0; } }
+
     /* 深色模式：夜晚的紫罗兰夜色 */
     @media (prefers-color-scheme: dark) {
       :root { --pink: #3a2c3e; --lavender: #332b46; --cream: #241d28; --ink: #d5c2d2; --card: rgba(52, 42, 58, .52); --line: rgba(255, 255, 255, .14); }
@@ -242,6 +297,12 @@
       figcaption { color: #a98fa2; }
       .photo, .photo-media { background: rgba(255,255,255,.08); }
       .wish-toast { background: rgba(52, 42, 58, .85); border-color: rgba(255,255,255,.14); color: #d5a8bd; }
+      .p-fire { color: #f3d98d; text-shadow: 0 0 10px #d9b45c, 0 0 24px rgba(217, 180, 92, .6); }
+      .couple img { opacity: .4; filter: drop-shadow(0 0 20px rgba(255,255,255,.06)); }
+      .couple:hover img { opacity: .68; }
+      .couple .say { background: rgba(52, 42, 58, .94); border-color: rgba(255,255,255,.14); color: #d5a0b8; }
+      .couple-heart { color: #a97e97; }
+      .type-caret { color: #d5a0b8; }
       footer { color: rgba(213, 194, 210, .6); }
     }
     @media (max-width: 560px) { main { width: min(100% - 24px, 920px); padding-top: 40px; }.gallery { gap: 9px; }.photo { border-radius: 14px; }.photo:nth-child(2) { transform: translateY(10px); }.time-grid { gap: 5px; }.time-unit { padding: 9px 2px; }.wish-delete { opacity: 1; } }
@@ -252,6 +313,18 @@
   <div class="ambient"><i class="orb one"></i><i class="orb two"></i></div>
   <div id="hearts" aria-hidden="true"></div>
   <div class="wish-toast" id="wishToast" role="status">有人写下了新愿望 ♡</div>
+
+  <!-- 线条人物：左侧男生望右、右侧女生望左，视线在内容中轴相遇（≥1200px 显示） -->
+  <aside class="couple-layer" aria-hidden="true">
+    <figure class="couple couple-man" id="coupleMan">
+      <img src="line-man.png" alt="" loading="lazy" decoding="async">
+      <figcaption class="say">……想她了</figcaption>
+    </figure>
+    <figure class="couple couple-woman" id="coupleWoman">
+      <img src="line-woman.png" alt="" loading="lazy" decoding="async">
+      <figcaption class="say">……在想你</figcaption>
+    </figure>
+  </aside>
 
   <!-- 宽屏氛围装饰：竖排情诗 / 拍立得 / 里程碑 / 星光（≥1200px 显示） -->
   <aside class="side-decor" aria-hidden="true">
@@ -352,10 +425,16 @@
     <p class="lightbox-hint">点击任意处关闭</p>
   </div>
 
+  <script type="module" src="nav.js"></script>
+  <script type="module" src="player.js"></script>
   <script type="module">
     // Firebase SDK 导入
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
     import { getDatabase, ref, push, update, remove, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+    // 交互音效引擎
+    import { sfx } from './sfx.js';
+    // 全站氛围层（四季粒子 + 点击爱心彩蛋）
+    import { isSpecialDay } from './ambient.js';
 
     // Firebase 配置
     const firebaseConfig = {
@@ -475,14 +554,43 @@
         : `距离第 ${nextMilestone} 天还有 ${remain} 天`;
     }
 
-    // 展开 / 收起隐藏的告白文字。
+    // 展开 / 收起隐藏的告白文字：首次展开为打字机逐字浮现。
     const moreButton = document.querySelector('#moreButton');
     const moreLove = document.querySelector('#moreLove');
+    let letterTyped = false;
+    let typingTimers = [];
+
+    function typeLetter() {
+      if (letterTyped) return;
+      letterTyped = true;
+      sfx.page();
+      const queue = [...moreLove.querySelectorAll('p')].map(p => ({ p, full: p.textContent }));
+      queue.forEach(q => q.p.textContent = '');
+      let pi = 0, ci = 0;
+      const caret = document.createElement('span');
+      caret.className = 'type-caret';
+      caret.textContent = '▍';
+      (function tick() {
+        if (pi >= queue.length) { typingTimers.push(setTimeout(() => caret.remove(), 2600)); return; }
+        const { p, full } = queue[pi];
+        p.textContent = full.slice(0, ++ci);
+        p.appendChild(caret);
+        if (ci >= full.length) { pi++; ci = 0; typingTimers.push(setTimeout(tick, 420)); }
+        else typingTimers.push(setTimeout(tick, 55));
+      })();
+    }
+
     moreButton.addEventListener('click', () => {
       const isOpen = moreLove.classList.toggle('is-open');
       moreLove.setAttribute('aria-hidden', String(!isOpen));
       moreButton.setAttribute('aria-expanded', String(isOpen));
       moreButton.textContent = isOpen ? '收起这份心意' : '展开更多心意';
+      if (isOpen) {
+        typeLetter();
+      } else if (!letterTyped) {
+        typingTimers.forEach(clearTimeout);
+        typingTimers = [];
+      }
     });
 
     // 愿望清单：基于 Firebase 实时数据库，所有人共享同一份愿望。
@@ -524,6 +632,7 @@
     function showWishToast(author) {
       wishToast.textContent = author ? `${author} 写下了新愿望 ♡` : '有人写下了新愿望 ♡';
       wishToast.classList.add('is-show');
+      sfx.doorbell();
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => wishToast.classList.remove('is-show'), 3200);
     }
@@ -629,6 +738,7 @@
       const text = event.target.textContent.slice(0, 100);
       clearTimeout(debounceTimer);
       update(ref(db, `wishes/${key}`), { text });
+      if (text.trim()) sfx.ding();
     }, true);
 
     // 勾选/取消勾选：立即写入数据库；勾选完成时绽放爱心
@@ -640,6 +750,7 @@
       const done = event.target.checked;
       update(ref(db, `wishes/${key}`), { done });
       if (done) {
+        sfx.chime();
         const box = event.target.getBoundingClientRect();
         burstHearts(box.left + box.width / 2, box.top + box.height / 2);
       }
@@ -671,34 +782,61 @@
 
     // 添加新愿望：推送到数据库，所有页面实时同步（带上署名）。
     addWish.addEventListener('click', () => {
+      sfx.page();
       const newRef = push(wishesRef, { text: '', done: false, author: currentAuthor() });
       pendingFocusKey = newRef.key;
     });
 
-    // 背景爱心：分批生成以降低页面负担；手机上更稀疏，省电省性能。
-    const heartBox = document.querySelector('#hearts');
-    const isMobile = window.matchMedia('(max-width: 560px)').matches;
-    function createHeart() {
-      const heart = document.createElement('span');
-      heart.className = 'particle-heart'; heart.textContent = '♥';
-      heart.style.left = `${Math.random() * 100}%`;
-      heart.style.fontSize = `${8 + Math.random() * 13}px`;
-      heart.style.setProperty('--drift', `${-40 + Math.random() * 80}px`);
-      heart.style.animationDuration = `${11 + Math.random() * 10}s`;
-      heartBox.appendChild(heart);
-      heart.addEventListener('animationend', () => heart.remove());
-    }
-    for (let i = 0; i < (isMobile ? 5 : 8); i++) setTimeout(createHeart, i * (isMobile ? 1400 : 900));
-    setInterval(createHeart, isMobile ? 3200 : 2100);
+    // 背景四季粒子与点击爱心彩蛋由 ambient.js 统一提供。
 
-    // 小彩蛋：点击页面任意处，会短暂绽放一颗爱心。
-    document.addEventListener('click', event => {
-      const heart = document.createElement('span');
-      heart.className = 'click-heart'; heart.textContent = '♥';
-      heart.style.left = `${event.clientX}px`; heart.style.top = `${event.clientY}px`;
-      document.body.appendChild(heart);
-      heart.addEventListener('animationend', () => heart.remove());
-    });
+    // 线条人物：悬停 2 秒听到心声；两人都被问候过，中轴飘起相连的大爱心（一次性）。
+    const coupleLayer = document.querySelector('.couple-layer');
+    if (coupleLayer) {
+      const man = document.querySelector('#coupleMan');
+      const woman = document.querySelector('#coupleWoman');
+      const saidKey = who => `romantic-said-${who}`;
+      const heartKey = 'romantic-couple-heart';
+
+      function bindCouple(el, who) {
+        let timer = null;
+        el.addEventListener('mouseenter', () => {
+          timer = setTimeout(() => {
+            el.classList.add('is-saying');
+            try { localStorage.setItem(saidKey(who), '1'); } catch { /* 忽略 */ }
+            maybeJoinHearts();
+          }, 2000);
+        });
+        el.addEventListener('mouseleave', () => {
+          clearTimeout(timer);
+          el.classList.remove('is-saying');
+        });
+      }
+      bindCouple(man, 'man');
+      bindCouple(woman, 'woman');
+
+      function maybeJoinHearts() {
+        let both = false;
+        try {
+          both = localStorage.getItem(saidKey('man')) && localStorage.getItem(saidKey('woman')) && !localStorage.getItem(heartKey);
+        } catch { /* 忽略 */ }
+        if (!both) return;
+        try { localStorage.setItem(heartKey, '1'); } catch { /* 忽略 */ }
+        const big = document.createElement('span');
+        big.className = 'couple-heart';
+        big.textContent = '♥';
+        document.body.appendChild(big);
+        big.addEventListener('animationend', () => big.remove());
+      }
+
+      // 纪念日彩蛋：两人向中轴靠近，之间亮起温柔光点
+      if (isSpecialDay) {
+        coupleLayer.classList.add('is-anniversary');
+        const spark = document.createElement('span');
+        spark.className = 'couple-spark';
+        spark.textContent = '✦';
+        coupleLayer.appendChild(spark);
+      }
+    }
 
     /* 可选背景音乐（默认关闭：请准备本地 music.mp3 后取消下一行注释）
     const music = new Audio('music.mp3'); music.loop = true; */

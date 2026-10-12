@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6e8f1" />
+  <meta property="og:title" content="我们的年度报告 · 写给你的温柔心事" />
+  <meta property="og:description" content="把这一年一起走过的日子，认认真真地数给你听。" />
+  <meta property="og:type" content="website" />
+  <title>我们的年度报告 · 写给你的温柔心事</title>
+  <style>
+    :root {
+      --pink: #f6dce9; --lavender: #e5def7; --cream: #fffafc;
+      --ink: #625564; --accent: #bd879e; --card: rgba(255,255,255,.43); --line: rgba(255,255,255,.65);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-width: 320px; color: var(--ink);
+      font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: linear-gradient(125deg, var(--pink), #f8edf4, var(--lavender), #f4e5ee);
+      background-size: 300% 300%; animation: backgroundFlow 16s ease-in-out infinite, pageIn 1.5s ease-out;
+      overflow-x: hidden;
+    }
+    @keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes backgroundFlow { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    .ambient { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: -2; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(4px); opacity: .43; animation: drift 12s ease-in-out infinite alternate; }
+    .orb.one { width: 38vw; height: 38vw; min-width: 280px; min-height: 280px; background: rgba(255,255,255,.42); top: -14%; left: -10%; }
+    .orb.two { width: 29vw; height: 29vw; min-width: 220px; min-height: 220px; background: rgba(217,198,246,.56); right: -8%; bottom: 2%; animation-delay: -5s; }
+    @keyframes drift { to { transform: translate(3vw,3vh) scale(1.08); } }
+
+    main { width: min(760px, calc(100% - 32px)); margin: 0 auto; padding: 72px 0 48px; }
+    .glass {
+      background: var(--card); border: 1px solid var(--line);
+      box-shadow: 0 18px 54px rgba(118,78,113,.13), inset 0 1px 0 rgba(255,255,255,.55);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-radius: 28px;
+    }
+    .report-card { padding: clamp(34px,7vw,60px) clamp(24px,6vw,54px); margin-bottom: 26px; text-align: center; }
+    .eyebrow { margin: 0 0 16px; font-size: .74rem; letter-spacing: .25em; color: #9c748a; }
+    h1 { margin: 0; font: 400 clamp(2rem,6vw,3.4rem)/1.2 Georgia, "Songti SC", serif; letter-spacing: .1em; color: #796072; }
+    .lead { margin: 20px auto 0; max-width: 30em; line-height: 2; color: #826d7d; font-size: .95rem; }
+
+    .big-days { font: 400 clamp(3.6rem,15vw,7rem)/1 Georgia, serif; color: #9f6f85; text-shadow: 0 5px 22px rgba(160,111,135,.15); margin: 8px 0 4px; }
+    .big-days small { font: 400 1rem "Microsoft YaHei", sans-serif; color: #8b7381; margin-left: 8px; }
+    .sub-note { margin: 14px 0 0; color: #987b8b; font-size: .88rem; line-height: 1.9; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 26px; }
+    .stat-box { border-radius: 17px; padding: 20px 8px; background: rgba(255,255,255,.32); }
+    .stat-box strong { display: block; font: 400 clamp(1.9rem,6vw,2.7rem)/1.2 Georgia, serif; color: #9f6f85; }
+    .stat-box span { display: block; margin-top: 7px; font-size: .76rem; color: #987b8b; letter-spacing: .08em; }
+
+    .progress-ring { margin: 6px auto 4px; width: 132px; height: 132px; }
+    .progress-ring circle { fill: none; stroke-width: 9; }
+    .ring-bg { stroke: rgba(189,135,158,.2); }
+    .ring-fg { stroke: #c984a0; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1); }
+    .ring-text { font: 400 1.5rem/132px Georgia, serif; color: #9f6f85; }
+
+    .author-rank { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 10px; text-align: left; }
+    .author-rank li { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 13px; background: rgba(255,255,255,.3); }
+    .author-rank .rk { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: rgba(232,183,203,.45); color: #9b5f7d; font-size: .76rem; flex: 0 0 26px; }
+    .author-rank .nm { flex: 1; color: #7e6372; font-size: .9rem; }
+    .author-rank .bar { flex: 0 0 34%; height: 6px; border-radius: 6px; background: rgba(189,135,158,.18); overflow: hidden; }
+    .author-rank .bar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg,#e8b7cb,#bd879e); }
+    .author-rank .ct { flex: 0 0 44px; text-align: right; font-size: .8rem; color: #987b8b; }
+    .rank-empty { text-align: center; color: #ae96a3; font-size: .88rem; padding: 12px; }
+
+    .wish-words { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+    .wish-words li { padding: 12px 16px; border-radius: 13px; border: 1px dashed rgba(169,118,141,.38); background: rgba(255,255,255,.25); font: 1rem/1.7 "KaiTi","STKaiti",serif; color: #7e6372; text-align: left; }
+    .wish-words li.done { opacity: .6; text-decoration: line-through; text-decoration-color: rgba(137,89,112,.5); }
+    .wish-words .by { display: block; text-align: right; font: .72rem "Microsoft YaHei", sans-serif; color: #a9909e; text-decoration: none; }
+
+    .ending { font-family: "KaiTi","STKaiti",serif; font-size: clamp(1.15rem,3.4vw,1.5rem); line-height: 2.3; color: #705b69; }
+    .ending .heart-mark { color: #c984a0; }
+    .back-link { display: inline-block; margin: 4px 0 0 6px; text-decoration: none; color: #a17187; font: .86rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; }
+    .back-link:hover { color: #9b5f7d; }
+    footer { text-align: center; padding: 24px 0 6px; font: .84rem Georgia, serif; letter-spacing: .12em; color: rgba(111,83,102,.7); }
+
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+    .reveal.is-visible { opacity: 1; transform: none; }
+
+    @media (prefers-color-scheme: dark) {
+      :root { --pink:#3a2c3e; --lavender:#332b46; --ink:#d5c2d2; --card:rgba(52,42,58,.52); --line:rgba(255,255,255,.14); }
+      body { background: linear-gradient(125deg,var(--pink),#2f2536,var(--lavender),#2c2135); color: var(--ink); }
+      .orb.one { background: rgba(255,255,255,.1); } .orb.two { background: rgba(150,110,200,.22); }
+      .eyebrow { color: #b98fa6; } h1 { color: #e3cddd; } .lead, .sub-note { color: #b49cae; }
+      .big-days { color: #d5a0b8; } .big-days small, .stat-box span { color: #b49cae; }
+      .stat-box { background: rgba(255,255,255,.07); } .stat-box strong, .ring-text { color: #d5a0b8; }
+      .ring-bg { stroke: rgba(209,145,173,.18); }
+      .author-rank li, .wish-words li { background: rgba(255,255,255,.06); }
+      .author-rank .rk { background: rgba(232,183,203,.22); color: #d5a0b8; }
+      .author-rank .nm, .ending { color: #c3a8bd; } .author-rank .ct, .rank-empty { color: #8d7386; }
+      .wish-words li { color: #c3a8bd; border-color: rgba(209,145,173,.3); } .wish-words .by { color: #8d7386; }
+      .back-link { color: #cf9db6; } footer { color: rgba(213,194,210,.6); }
+    }
+    @media (max-width: 560px) { main { width: min(100% - 24px, 760px); padding-top: 44px; } .stat-grid { gap: 8px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <div class="ambient"><i class="orb one"></i><i class="orb two"></i></div>
+
+  <main>
+    <header class="report-card glass reveal">
+      <p class="eyebrow">OUR ANNUAL REPORT</p>
+      <h1>我们的年度报告</h1>
+      <p class="lead">时间走得很快，让我把这些一起走过的日子，认认真真地数给你听。</p>
+    </header>
+
+    <section class="report-card glass reveal">
+      <p class="eyebrow">CHAPTER 01 · 时光</p>
+      <p class="sub-note">从 2023 年 4 月 20 日那个怦然心动的日子开始</p>
+      <div class="big-days"><b id="rptDays">—</b><small>天</small></div>
+      <p class="sub-note" id="rptElapsed">正在计算我们的每一刻…</p>
+      <div class="stat-grid">
+        <div class="stat-box"><strong id="rptHours">—</strong><span>小时</span></div>
+        <div class="stat-box"><strong id="rptMonths">—</strong><span>个月</span></div>
+        <div class="stat-box"><strong id="rptYears">—</strong><span>年</span></div>
+      </div>
+      <p class="sub-note" id="rptMilestone"></p>
+    </section>
+
+    <section class="report-card glass reveal">
+      <p class="eyebrow">CHAPTER 02 · 愿望清单</p>
+      <div class="stat-grid">
+        <div class="stat-box"><strong id="rptTotal">—</strong><span>写下的愿望</span></div>
+        <div class="stat-box"><strong id="rptDone">—</strong><span>已实现</span></div>
+        <div class="stat-box"><strong id="rptTodo">—</strong><span>待实现</span></div>
+      </div>
+      <div style="margin-top:28px">
+        <svg class="progress-ring" viewBox="0 0 120 120" width="132" height="132" aria-label="愿望完成率">
+          <circle class="ring-bg" cx="60" cy="60" r="50"></circle>
+          <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="314.16"></circle>
+          <text class="ring-text" x="60" y="60" text-anchor="middle" dominant-baseline="central" id="ringText">—</text>
+        </svg>
+        <p class="sub-note">这是我们把约定一件件变成现实的比例</p>
+      </div>
+    </section>
+
+    <section class="report-card glass reveal">
+      <p class="eyebrow">CHAPTER 03 · 是谁在许愿</p>
+      <ul class="author-rank" id="authorRank"><li class="rank-empty">正在统计…</li></ul>
+    </section>
+
+    <section class="report-card glass reveal">
+      <p class="eyebrow">CHAPTER 04 · 最近的小约定</p>
+      <ul class="wish-words" id="recentWishes"><li class="rank-empty">正在加载…</li></ul>
+    </section>
+
+    <section class="report-card glass reveal">
+      <p class="eyebrow">FINAL · 写在最后</p>
+      <p class="ending">
+        报告总会翻到最后一页，<br>
+        但我们的故事不会。<br>
+        新的一年，还要继续把愿望写满，<br>
+        把每一天都过成<span class="heart-mark">♡</span>喜欢的样子。
+      </p>
+    </section>
+
+    <a class="back-link" href="index.html">♡ 回到开场</a>
+    <footer>WITH ALL MY HEART ♡</footer>
+  </main>
+
+  <script type="module" src="nav.js"></script>
+  <script type="module" src="player.js"></script>
+  <script type="module" src="ambient.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCIzJdIyEVaORcrZvwdDUOnpDXHMxSK96c",
+      authDomain: "linmo007n.firebaseapp.com",
+      databaseURL: "https://linmo007n-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "linmo007n",
+      storageBucket: "linmo007n.firebasestorage.app",
+      messagingSenderId: "677427976990",
+      appId: "1:677427976990:web:1f528a27eada09d22a470f"
+    };
+    const db = getDatabase(initializeApp(firebaseConfig));
+
+    // 与首页一致的纪念日
+    const anniversaryDate = new Date(2023, 3, 20, 0, 0, 0);
+    const pad = n => String(n).padStart(2, '0');
+
+    function renderTime() {
+      const now = new Date();
+      const diff = Math.max(0, now - anniversaryDate);
+      const sec = Math.floor(diff / 1000);
+      const days = Math.floor(sec / 86400);
+      const hours = Math.floor((sec % 86400) / 3600);
+      const months = Math.floor(days / 30.4375);
+      let years = now.getFullYear() - anniversaryDate.getFullYear();
+      if (now < new Date(now.getFullYear(), anniversaryDate.getMonth(), anniversaryDate.getDate())) years--;
+      document.querySelector('#rptDays').textContent = days.toLocaleString('zh-CN');
+      document.querySelector('#rptHours').textContent = (days * 24 + hours).toLocaleString('zh-CN');
+      document.querySelector('#rptMonths').textContent = months;
+      document.querySelector('#rptYears').textContent = Math.max(0, years);
+      document.querySelector('#rptElapsed').textContent =
+        `也就是 ${days.toLocaleString('zh-CN')} 天 ${hours} 小时 ${pad(Math.floor((sec % 3600) / 60))} 分钟的喜欢`;
+      const totalDays = Math.max(1, days + 1);
+      const next = (Math.floor((totalDays - 1) / 100) + 1) * 100;
+      const remain = next - totalDays;
+      document.querySelector('#rptMilestone').textContent =
+        remain <= 0 ? '今天，就是值得庆祝的日子 ♡' : `距离第 ${next} 天，还有 ${remain} 天`;
+    }
+    renderTime(); setInterval(renderTime, 1000);
+
+    onValue(ref(db, 'wishes'), snapshot => {
+      const data = snapshot.val() || {};
+      const list = Object.entries(data).map(([key, w]) => ({ key, ...w }));
+      const total = list.length;
+      const done = list.filter(w => w.done).length;
+      const todo = total - done;
+      const rate = total ? Math.round(done / total * 100) : 0;
+
+      document.querySelector('#rptTotal').textContent = total;
+      document.querySelector('#rptDone').textContent = done;
+      document.querySelector('#rptTodo').textContent = todo;
+      document.querySelector('#ringText').textContent = total ? rate + '%' : '—';
+      const C = 2 * Math.PI * 50;
+      document.querySelector('#ringFg').style.strokeDashoffset = String(C * (1 - rate / 100));
+
+      // 署名排行（未署名计入"神秘的人"）
+      const rankEl = document.querySelector('#authorRank');
+      const counts = {};
+      list.forEach(w => { const name = (w.author || '').trim() || '神秘的人'; counts[name] = (counts[name] || 0) + 1; });
+      const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      if (!ranked.length) {
+        rankEl.innerHTML = '<li class="rank-empty">还没有愿望，去首页写下第一个约定吧 ♡</li>';
+      } else {
+        const max = ranked[0][1];
+        rankEl.innerHTML = ranked.map(([name, ct], i) => `
+          <li>
+            <span class="rk">${i + 1}</span>
+            <span class="nm">${name}</span>
+            <span class="bar"><i style="width:${Math.round(ct / max * 100)}%"></i></span>
+            <span class="ct">${ct} 条</span>
+          </li>`).join('');
+      }
+
+      // 最近的小约定（按写入顺序取后 5 条）
+      const recent = list.slice(-5).reverse();
+      const recentEl = document.querySelector('#recentWishes');
+      if (!recent.length) {
+        recentEl.innerHTML = '<li class="rank-empty">还没有愿望，去首页写下第一个约定吧 ♡</li>';
+      } else {
+        recentEl.innerHTML = recent.map(w => `
+          <li class="${w.done ? 'done' : ''}">${(w.text || '（还没来得及写内容的愿望）').slice(0, 100)}
+            <span class="by">${w.author ? '—— ' + w.author : ''}</span>
+          </li>`).join('');
+      }
+    }, () => {
+      document.querySelector('#authorRank').innerHTML = '<li class="rank-empty">数据加载失败，请检查网络 ♡</li>';
+      document.querySelector('#recentWishes').innerHTML = '<li class="rank-empty">数据加载失败，请检查网络 ♡</li>';
+    });
+
+    // 滚动淡入
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) { entry.target.classList.add('is-visible'); io.unobserve(entry.target); }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
