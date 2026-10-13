@@ -72,6 +72,19 @@ document.addEventListener('click', (event) => {
   setTimeout(() => { location.href = href; }, 380);
 });
 
+// 从浏览器"后退缓存(bfcache)"返回时，清除残留的淡出状态，
+// 否则上一页会带着 rn-leaving（opacity:0）被恢复，看起来像白屏。
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    document.body.classList.remove('rn-leaving');
+    document.body.style.opacity = '';
+    document.body.style.transition = '';
+    // 返回时也收起可能展开的导航菜单
+    nav.classList.remove('is-open');
+    navBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && nav.classList.contains('is-open')) {
     nav.classList.remove('is-open');
