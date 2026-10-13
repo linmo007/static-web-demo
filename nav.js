@@ -47,6 +47,7 @@ nav.innerHTML = `
   </nav>
 `;
 document.body.appendChild(nav);
+nav.setAttribute('data-rn-keep', '');
 
 const navBtn = nav.querySelector('.rn-btn');
 navBtn.addEventListener('click', () => {
@@ -63,12 +64,18 @@ document.addEventListener('pointerdown', (event) => {
 });
 
 // ============ SPA 无刷新换页：站内跳转不重新加载文档，音乐得以连续播放 ============
-// 原理：拦截站内链接 → 拉取目标页 HTML → 替换 <main> 与页面样式 → 执行页面脚本。
-// 音频播放器等 body 级组件不在 <main> 内，全程存活。
-const pageCache = new Map();          // 规范化路径 -> { main, title, init }
+// 原理：拦截站内链接 → 拉取目标页 HTML → 整体替换"页面级 body 节点"与页面样式 → 执行页面脚本。
+// #romanticNav / #romanticPlayer / #hearts 等常驻组件（带 data-rn-keep）与 <script> 不参与切换。
+const pageCache = new Map();          // 规范化路径 -> { nodes, title, init }
 let currentPath = normPath(location.href);
 let navBusy = false;
 let pendingNav = null;
+
+// 入口页 HTML 里自带的 #hearts（如 index.html）也标记为常驻，避免被换走
+document.querySelectorAll('#hearts').forEach(el => el.setAttribute('data-rn-keep', ''));
+
+// 页面级节点：不是 <script>、也没有 data-rn-keep 标记的 body 直接子元素
+const isPageOwned = node => node && node.tagName !== 'SCRIPT' && !node.hasAttribute('data-rn-keep');
 
 function normPath(href) {
   try {
@@ -132,39 +139,45 @@ async function navigate(href, { push = true } = {}) {
       const wait = Math.max(0, 380 - (Date.now() - startedAt));
       if (wait) await new Promise(r => setTimeout(r, wait));
     }
-    // 缓存当前页（含已绑定事件的 DOM），返回时原样恢复
-    const oldMain = document.querySelector('main');
-    pageCache.set(currentPath, { main: oldMain, title: document.title, init: true });
-    // 目标页：优先用缓存
+    // 缓存当前页的全部页面级节点（含已绑定事件的 DOM，如线条人物/小猫/灯箱等）
+    const oldNodes = Array.from(document.body.children).filter(isPageOwned);
+    pageCache.set(currentPath, { nodes: oldNodes, title: document.title, init: true });
+    // 目标页：优先用缓存（返回/前进时原样恢复，零闪烁）
     let entry = pageCache.get(path);
     if (!entry) {
-      entry = { main: document.importNode(doc.querySelector('main'), true), title: doc.title, init: false };
+      const freshNodes = Array.from(doc.body.children)
+        .filter(n => n.tagName !== 'SCRIPT' && !n.hasAttribute('data-rn-keep') && n.id !== 'hearts')
+        .map(n => document.importNode(n, true));
+      entry = { nodes: freshNodes, title: doc.title, init: false };
       pageCache.set(path, entry);
     }
     // 换页面样式（运行时注入的样式带 data-rn-keep，保留）
     document.head.querySelectorAll('style:not([data-rn-keep])').forEach(s => s.remove());
     doc.head.querySelectorAll('style').forEach(s => document.head.appendChild(document.importNode(s, true)));
-    // 换内容
-    oldMain.replaceWith(entry.main);
+    // 整体替换页面级 body 节点（常驻组件不动，音乐/粒子/导航不受影响）
+    oldNodes.forEach(n => n.remove());
+    entry.nodes.forEach(n => document.body.appendChild(n));
     document.title = entry.title;
     if (push) { try { history.pushState({ rnScroll: 0 }, '', url.href); } catch { /* 忽略 */ } }
     // 首次进入该页：执行其内联模块脚本（页面专属逻辑；带 src 的共享脚本已加载，跳过）。
-    // 给换入的 <main> 打令牌：脚本等目标页真正挂载后再跑，若期间用户已切走则放弃执行，
-    // 避免脚本在错误的页面上查询元素报 null 错误。
+    // 用 body 上的令牌确认脚本运行时目标页仍挂载；用户快速切走时待执行脚本自动放弃，避免 null 报错。
     if (!entry.init) {
       entry.init = true;
       const token = 'rn-' + Math.random().toString(36).slice(2);
-      entry.main.dataset.rnToken = token;
+      document.body.dataset.rnToken = token;
       doc.body.querySelectorAll('script[type="module"]:not([src])').forEach(s => {
         const el = document.createElement('script');
         el.type = 'module';
         el.textContent =
           `{ let __ok = false;\n` +
-          `  for (let i = 0; i < 100; i++) { if (document.querySelector('main[data-rn-token="${token}"]')) { __ok = true; break; } await new Promise(r => setTimeout(r, 50)); }\n` +
+          `  for (let i = 0; i < 100; i++) { if (document.body.dataset.rnToken === '${token}') { __ok = true; break; } await new Promise(r => setTimeout(r, 50)); }\n` +
           `  if (!__ok) throw new Error('[nav] 页面已切换，跳过本页脚本');\n` +
           `}\n` + s.textContent;
         document.body.appendChild(el);
       });
+    } else {
+      // 恢复缓存页：更新令牌（不会触发脚本，仅用于一致性）
+      document.body.dataset.rnToken = 'rn-cache-' + Math.random().toString(36).slice(2);
     }
     currentPath = path;
     updateCurrentNav(path);

@@ -1,5 +1,5 @@
 /* Service Worker：HTML 页面网络优先（保证更新即时生效），静态资源缓存优先（离线可用）。 */
-const CACHE_NAME = 'love-wishes-v3';
+const CACHE_NAME = 'love-wishes-v4';
 const CORE_ASSETS = [
   './',
   './index.html',

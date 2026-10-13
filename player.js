@@ -67,6 +67,16 @@ style.textContent = `
 }
 @media (max-width: 560px) { #romanticPlayer { right: 12px; bottom: 12px; } #romanticPlayer .rp-disc { width: 46px; height: 46px; } #romanticPlayer .rp-panel { width: min(78vw, 264px); } }
 @media (prefers-reduced-motion: reduce) { #romanticPlayer .rp-disc, #romanticPlayer .rp-label { animation: none !important; } }
+#romanticPlayer .rp-disc .rp-note { position: relative; z-index: 1; }
+/* 自动播放被拦截时：黑胶呼吸光晕 + "轻触开启音乐"提示，首次播放后消失 */
+#romanticPlayer.is-locked .rp-disc { animation: rp-pulse 1.8s ease-in-out infinite; }
+@keyframes rp-pulse { 0%,100% { box-shadow: 0 10px 26px rgba(118,78,113,.3), 0 0 0 0 rgba(232,183,203,.55); } 50% { box-shadow: 0 10px 26px rgba(118,78,113,.3), 0 0 0 12px rgba(232,183,203,0); } }
+#romanticPlayer .rp-hint { position: absolute; right: 62px; bottom: 6px; white-space: nowrap; padding: 8px 14px; border-radius: 99px; background: rgba(255,250,252,.92); color: #b06a8c; font: .74rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; box-shadow: 0 10px 28px rgba(118,78,113,.25); border: 1px solid rgba(255,255,255,.7); opacity: 0; visibility: hidden; transform: translateX(8px); transition: opacity .35s ease, transform .35s ease, visibility .35s; pointer-events: none; }
+#romanticPlayer .rp-hint::after { content: ""; position: absolute; right: -6px; bottom: 14px; width: 12px; height: 12px; background: inherit; border-right: 1px solid rgba(255,255,255,.7); border-top: 1px solid rgba(255,255,255,.7); transform: rotate(45deg); }
+#romanticPlayer.is-locked .rp-hint { opacity: 1; visibility: visible; transform: translateX(0); animation: rp-hint-bob 2.2s ease-in-out infinite; }
+@keyframes rp-hint-bob { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-5px); } }
+@media (prefers-color-scheme: dark) { #romanticPlayer .rp-hint { background: rgba(52,42,58,.95); color: #e0a9c4; border-color: rgba(255,255,255,.14); } }
+@media (prefers-reduced-motion: reduce) { #romanticPlayer.is-locked .rp-disc, #romanticPlayer.is-locked .rp-hint { animation: none; } }
 `;
 document.head.appendChild(style);
 style.setAttribute('data-rn-keep', '');
@@ -92,8 +102,10 @@ root.innerHTML = `
     <p class="rp-empty" hidden>这里还没有歌 ♪<br>把 mp3 文件放进 music/ 目录，<br>再在 music/playlist.json 里登记曲目。</p>
   </div>
   <button type="button" class="rp-disc" aria-label="打开音乐播放器" aria-expanded="false"><span class="rp-label"></span><span class="rp-note">♪</span></button>
+  <span class="rp-hint" aria-hidden="true">轻触页面任意处 · 音乐响起 ♪</span>
 `;
 document.body.appendChild(root);
+root.setAttribute('data-rn-keep', '');
 
 const panel = root.querySelector('.rp-panel');
 const titleEl = root.querySelector('.rp-title');
@@ -118,6 +130,7 @@ function ensureAudio() {
   audio.volume = parseFloat(ls.get(LS.vol, '0.65')) || 0.65;
   volumeInput.value = audio.volume;
   audio.addEventListener('loadedmetadata', () => { durEl.textContent = fmt(audio.duration || 0); });
+  audio.addEventListener('playing', () => root.classList.remove('is-locked'));
   audio.addEventListener('timeupdate', () => {
     const p = audio.duration ? audio.currentTime / audio.duration : 0;
     barFill.style.width = `${(p * 100).toFixed(1)}%`;
@@ -160,15 +173,19 @@ function loadTrack(i, { autoplay = false, resume = 0 } = {}) {
 }
 
 function play() {
-  if (!tracks.length) return;
+  if (!tracks.length) return Promise.resolve();
   const a = ensureAudio();
-  a.play().then(() => {
+  return a.play().then(() => {
     root.classList.add('is-playing');
+    root.classList.remove('is-locked');
     toggleBtn.textContent = '⏸';
     ls.set(LS.on, 'on');
     wantPlay = true;
     broadcast({ type: 'play', index: curIndex, time: a.currentTime });
-  }).catch(() => { /* 自动播放被拦截，等待用户点击 */ });
+  }).catch((err) => {
+    // 播放被拦截/音频未就绪：显示轻触提示，等待首次手势（见解锁监听）
+    if (err && err.name !== 'AbortError') root.classList.add('is-locked');
+  });
 }
 
 function pause({ remember = true } = {}) {
@@ -275,15 +292,16 @@ function applyTracks(list) {
     const savedTs = parseInt(ls.get(LS.timeTs, '0'), 10) || Date.now();
     const resumePos = Math.max(0, savedTime + (Date.now() - savedTs) / 1000);
     loadTrack(curIndex, { autoplay: false, resume: resumePos });
-    // 进入页面即尝试自动播放；若被浏览器拦截，则在用户首次交互（点/滑/按）时自动续播
-    if (wantPlay) tryAutoPlay();
+    // 进入页面即尝试自动播放；被拦截时由全局手势解锁监听兜底
+    if (wantPlay) play();
   } else {
     emptyEl.hidden = false;
     titleEl.textContent = '— 暂无曲目 —';
   }
 }
 
-async function loadPlaylist() {
+let playlistReady = null;
+function loadPlaylist() {
   // 优先用 sessionStorage 缓存的曲目立即初始化，
   // 这样跨页跳转时能在浏览器"用户激活窗口期"内立刻续播，避免被自动播放策略拦截。
   let cached = null;
@@ -291,31 +309,43 @@ async function loadPlaylist() {
   if (cached && cached.length) applyTracks(cached);
 
   // 后台从网络刷新曲目（更新后下次加载生效）
-  try {
-    const res = await fetch('music/playlist.json', { cache: 'no-store' });
-    const data = await res.json();
-    const fresh = Array.isArray(data) ? data : (data.tracks || []);
-    if (fresh.length) {
-      try { sessionStorage.setItem('rp-tracks-cache', JSON.stringify(fresh)); } catch { /* 忽略 */ }
-      if (!tracks.length) applyTracks(fresh);
-      else renderList();
-    }
-  } catch { /* 离线时沿用缓存 */ }
+  playlistReady = (async () => {
+    try {
+      const res = await fetch('music/playlist.json', { cache: 'no-store' });
+      const data = await res.json();
+      const fresh = Array.isArray(data) ? data : (data.tracks || []);
+      if (fresh.length) {
+        try { sessionStorage.setItem('rp-tracks-cache', JSON.stringify(fresh)); } catch { /* 忽略 */ }
+        if (!tracks.length) applyTracks(fresh);
+        else renderList();
+      }
+    } catch { /* 离线时沿用缓存 */ }
+  })();
+  return playlistReady;
 }
 
-// 自动播放：先直接 play()，失败则挂一次性手势监听
-let gestureBound = false;
-function tryAutoPlay() {
-  play();
-  if (gestureBound) return;
-  gestureBound = true;
-  const onGesture = () => {
-    if (audio && audio.paused && wantPlay) play();
+// 首次手势解锁：必须在页面启动时就绑定（早于播放列表加载），
+// 用户在曲目加载完成前的点击也能在激活窗口内完成播放。
+let unlockBound = false;
+function bindGestureUnlock() {
+  if (unlockBound) return;
+  unlockBound = true;
+  const onGesture = async () => {
+    if (!wantPlay || (audio && !audio.paused)) return;
+    if (!tracks.length) { try { await playlistReady; } catch { /* 忽略 */ } }
+    if (!wantPlay || !tracks.length || (audio && !audio.paused)) return;
+    if (!audio || !audio.src) {
+      const savedTime = parseFloat(ls.get(LS.time, '0')) || 0;
+      const savedTs = parseInt(ls.get(LS.timeTs, '0'), 10) || Date.now();
+      loadTrack(curIndex, { resume: Math.max(0, savedTime + (Date.now() - savedTs) / 1000) });
+    }
+    play();
   };
   ['pointerdown', 'touchstart', 'keydown'].forEach(ev =>
-    window.addEventListener(ev, onGesture, { once: true, passive: true })
+    window.addEventListener(ev, onGesture, { passive: true })
   );
 }
+bindGestureUnlock();
 
 // 切页/刷新前把最新进度存下，保证跨页续播位置准确
 window.addEventListener('pagehide', () => {

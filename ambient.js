@@ -14,6 +14,7 @@ const heartBox = document.querySelector('#hearts') || (() => {
   box.id = 'hearts';
   box.setAttribute('aria-hidden', 'true');
   box.style.cssText = 'position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:-1';
+  box.setAttribute('data-rn-keep', '');
   document.body.prepend(box);
   return box;
 })();

@@ -75,6 +75,29 @@
     .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
     .reveal.is-visible { opacity: 1; transform: none; }
 
+    /* 上传卡片 */
+    .uploader { padding: 22px 24px; transition: border-color .25s, box-shadow .25s, transform .25s; }
+    .uploader.is-dragover { border-color: rgba(189,135,158,.8); box-shadow: 0 0 0 4px rgba(232,183,203,.35), 0 18px 54px rgba(118,78,113,.13); transform: scale(1.01); }
+    .up-tip { margin: 0 0 14px; font-size: .86rem; line-height: 1.8; color: #826d7d; }
+    .up-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .up-row input { flex: 1; min-width: 180px; padding: 10px 14px; border-radius: 99px; border: 1px dashed rgba(169,118,141,.45); outline: none; background: rgba(255,255,255,.5); color: #7e6372; font: .86rem "Microsoft YaHei", sans-serif; }
+    .up-row input:focus { background: rgba(255,255,255,.75); }
+    .up-btn { padding: 10px 22px; border: none; border-radius: 99px; cursor: pointer; background: linear-gradient(135deg, #e8b7cb, #bd879e); color: #fff; font: .86rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; box-shadow: 0 8px 20px rgba(160,111,135,.28); transition: transform .25s, box-shadow .25s, opacity .25s; }
+    .up-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(160,111,135,.36); }
+    .up-btn:disabled { opacity: .55; cursor: wait; transform: none; }
+    .up-status { margin: 12px 0 0; min-height: 1.2em; font-size: .76rem; color: #a97e97; letter-spacing: .04em; }
+    .up-status.is-error { color: #c0607f; }
+    /* 已上传照片的删除钮 */
+    .scrap .up-del { position: absolute; top: 2px; right: 2px; z-index: 4; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(255,255,255,.7); background: rgba(120,70,95,.55); color: #fff; font-size: .82rem; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .25s, background .25s; display: grid; place-items: center; }
+    .scrap:hover .up-del, .scrap .up-del:focus { opacity: 1; }
+    .scrap .up-del:hover { background: rgba(170,70,100,.85); }
+    @media (max-width: 560px) { .scrap .up-del { opacity: .9; } .uploader { padding: 18px 16px; } }
+    @media (prefers-color-scheme: dark) {
+      .up-tip { color: #b49cae; }
+      .up-row input { background: rgba(255,255,255,.07); border-color: rgba(209,145,173,.35); color: #c3a8bd; }
+      .up-status { color: #a97e97; }
+    }
+
     @media (prefers-color-scheme: dark) {
       :root { --pink:#3a2c3e; --lavender:#332b46; --ink:#d5c2d2; --card:rgba(52,42,58,.52); --line:rgba(255,255,255,.14); }
       body { background: linear-gradient(125deg,var(--pink),#2f2536,var(--lavender),#2c2135); color: var(--ink); }
@@ -102,6 +125,26 @@
       <h1>时光相册</h1>
       <p>把一起走过的时光，一张张贴进这本手账里。<br>每一张都是我想反复回去的瞬间。</p>
     </header>
+
+    <!-- ==================== 上传照片：选好后自动压缩上传，无需改代码 ==================== -->
+    <section class="year-block reveal">
+      <h2 class="year-title"><span class="year-badge">＋</span>贴上一张新照片</h2>
+      <div class="uploader glass" id="uploader">
+        <p class="up-tip">点击「选择照片」（可一次选多张），或直接把照片拖到这里——会自动压缩上传，立刻出现在下方相册 ♡</p>
+        <div class="up-row">
+          <input type="text" id="photoCaption" maxlength="30" placeholder="给这组照片写句备注（选填，如：初秋的傍晚）" aria-label="照片备注">
+          <button type="button" class="up-btn" id="photoPick">📷 选择照片</button>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" multiple hidden>
+        <p class="up-status" id="upStatus" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- 云端上传的照片（Firebase 实时同步） -->
+    <section class="year-block reveal" id="uploadedSection" hidden>
+      <h2 class="year-title"><span class="year-badge">♡</span>新贴上的瞬间</h2>
+      <div class="scrap-grid" id="uploadGrid"></div>
+    </section>
 
     <!-- ==================== 可修改：按年份复制整个 .year-block，在 .scrap-grid 中增删 figure 即可 ==================== -->
     <section class="year-block reveal">
@@ -141,11 +184,29 @@
   <script type="module" src="player.js"></script>
   <script type="module" src="ambient.js"></script>
   <script type="module">
+    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+    import { getDatabase, ref, push, remove, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+    import { sfx } from './sfx.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCIzJdIyEVaORcrZvwdDUOnpDXHMxSK96c",
+      authDomain: "linmo007n.firebaseapp.com",
+      databaseURL: "https://linmo007n-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "linmo007n",
+      storageBucket: "linmo007n.firebasestorage.app",
+      messagingSenderId: "677427976990",
+      appId: "1:677427976990:web:1f528a27eada09d22a470f"
+    };
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const photosRef = ref(db, 'gallery-photos');
+
     // 灯箱：点击照片放大，点击任意处或 ESC 关闭。
     const lightbox = document.querySelector('#lightbox');
     const lightboxImg = lightbox.querySelector('img');
     document.querySelectorAll('.scrap-grid').forEach(grid => {
       grid.addEventListener('click', event => {
+        if (event.target.closest('.up-del')) return; // 删除钮不触发灯箱
         const scrap = event.target.closest('.scrap');
         if (!scrap) return;
         lightboxImg.src = scrap.querySelector('img').src;
@@ -153,14 +214,133 @@
         lightbox.setAttribute('aria-hidden', 'false');
       });
     });
-    lightbox.addEventListener('click', () => {
+    const closeLightbox = () => {
       lightbox.classList.remove('is-open');
       lightbox.setAttribute('aria-hidden', 'true');
-    });
+    };
+    lightbox.addEventListener('click', closeLightbox);
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') {
-        lightbox.classList.remove('is-open');
-        lightbox.setAttribute('aria-hidden', 'true');
+      if (event.key === 'Escape') closeLightbox();
+    });
+
+    // ============ 照片上传：本地压缩为 JPEG（最长边 1280，质量 0.72）→ base64 存入数据库 ============
+    const uploader = document.querySelector('#uploader');
+    const fileInput = document.querySelector('#photoInput');
+    const pickBtn = document.querySelector('#photoPick');
+    const captionInput = document.querySelector('#photoCaption');
+    const statusEl = document.querySelector('#upStatus');
+    const uploadedSection = document.querySelector('#uploadedSection');
+    const uploadGrid = document.querySelector('#uploadGrid');
+    let busy = false;
+
+    const setStatus = (msg, isError = false) => {
+      statusEl.textContent = msg || '';
+      statusEl.classList.toggle('is-error', !!isError);
+    };
+    const getAuthor = () => { try { return (localStorage.getItem('romantic-author') || '').trim().slice(0, 12); } catch { return ''; } };
+
+    function compressImage(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const MAX = 1280;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            const ratio = Math.min(MAX / width, MAX / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          // 照片统一转 JPEG；极小的图保留原清晰度
+          resolve(canvas.toDataURL('image/jpeg', 0.72));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('图片读取失败')); };
+        img.src = url;
+      });
+    }
+
+    async function handleFiles(fileList) {
+      if (busy) return;
+      const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+      if (!files.length) { setStatus('请选择图片文件哦', true); return; }
+      busy = true; pickBtn.disabled = true;
+      const caption = captionInput.value.trim().slice(0, 30);
+      const author = getAuthor();
+      let ok = 0;
+      try {
+        for (let i = 0; i < files.length; i++) {
+          setStatus(`正在压缩第 ${i + 1} / ${files.length} 张…`);
+          const dataUrl = await compressImage(files[i]);
+          setStatus(`正在上传第 ${i + 1} / ${files.length} 张…`);
+          await push(photosRef, { dataUrl, caption, author, createdAt: Date.now() });
+          ok++;
+        }
+        sfx.ding();
+        setStatus(ok === files.length ? `已上传 ${ok} 张，已经贴进相册啦 ♡` : `完成 ${ok} / ${files.length} 张`);
+        captionInput.value = '';
+      } catch (err) {
+        const denied = String(err && (err.code || err.message) || '').includes('PERMISSION_DENIED');
+        setStatus(denied
+          ? '上传被拒绝：需要在 Firebase 数据库规则里添加 gallery-photos 节点权限（联系站长更新规则）'
+          : '上传失败了，请检查网络后重试', true);
+      } finally {
+        busy = false; pickBtn.disabled = false;
+        try { fileInput.value = ''; } catch { /* 忽略 */ }
+      }
+    }
+
+    pickBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+    ['dragenter', 'dragover'].forEach(ev =>
+      uploader.addEventListener(ev, e => { e.preventDefault(); uploader.classList.add('is-dragover'); }));
+    ['dragleave', 'dragend'].forEach(ev =>
+      uploader.addEventListener(ev, e => { e.preventDefault(); uploader.classList.remove('is-dragover'); }));
+    uploader.addEventListener('drop', event => {
+      event.preventDefault();
+      uploader.classList.remove('is-dragover');
+      if (event.dataTransfer && event.dataTransfer.files.length) handleFiles(event.dataTransfer.files);
+    });
+
+    // ============ 实时渲染已上传照片（最新在前） ============
+    const fmtDate = ts => {
+      const d = new Date(ts);
+      return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    onValue(photosRef, snapshot => {
+      const data = snapshot.val() || {};
+      const photos = Object.entries(data)
+        .map(([key, p]) => ({ key, ...p }))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      if (!photos.length) { uploadedSection.hidden = true; uploadGrid.innerHTML = ''; return; }
+      uploadedSection.hidden = false;
+      uploadedSection.classList.add('is-visible');
+      uploadGrid.innerHTML = photos.map(p => `
+        <figure class="scrap" data-key="${p.key}">
+          <span class="tape"></span>
+          <button type="button" class="up-del" data-del="${p.key}" aria-label="删除这张照片">×</button>
+          <img src="${p.dataUrl}" alt="${escapeHtml(p.caption || '上传的照片')}" loading="lazy" decoding="async">
+          <figcaption>${p.caption ? escapeHtml(p.caption) : fmtDate(p.createdAt || Date.now())}</figcaption>
+        </figure>`).join('');
+    }, () => setStatus('相册暂时连不上，请检查网络', true));
+
+    // 删除照片（二次确认）
+    uploadGrid.addEventListener('click', async event => {
+      const delBtn = event.target.closest('.up-del');
+      if (!delBtn) return;
+      event.stopPropagation();
+      if (!window.confirm('确定把这张照片从相册里取下来吗？')) return;
+      try {
+        await remove(ref(db, `gallery-photos/${delBtn.dataset.del}`));
+        sfx.pop();
+      } catch {
+        setStatus('删除失败，请稍后再试', true);
       }
     });
 
