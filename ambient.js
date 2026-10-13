@@ -39,6 +39,7 @@ if (!document.getElementById('ambient-style')) {
     @media (prefers-color-scheme: dark) { .particle-heart { color: #9c6b86; } .p-fire { color: #f3d98d; text-shadow: 0 0 10px #d9b45c, 0 0 24px rgba(217,180,92,.6); } }
   `;
   document.head.appendChild(style);
+  style.setAttribute('data-rn-keep', '');
 }
 
 function createHeart() {

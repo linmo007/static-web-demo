@@ -481,7 +481,17 @@
     const anniversaryDate = new Date(2023, 3, 20, 0, 0, 0);
 
     const pad = number => String(number).padStart(2, '0');
+    // 启动时捕获元素引用（换页后定时器写旧引用即可，避免重查报 null）
+    const counterEls = {
+      days: document.querySelector('#days'),
+      hours: document.querySelector('#hours'),
+      minutes: document.querySelector('#minutes'),
+      seconds: document.querySelector('#seconds'),
+      years: document.querySelector('#years'),
+      elapsed: document.querySelector('#elapsed'),
+    };
     function updateCounter() {
+      if (!counterEls.days) return;
       const now = new Date();
       const diff = Math.max(0, now - anniversaryDate);
       const totalSeconds = Math.floor(diff / 1000);
@@ -492,12 +502,12 @@
       let years = now.getFullYear() - anniversaryDate.getFullYear();
       const thisYearAnniversary = new Date(now.getFullYear(), anniversaryDate.getMonth(), anniversaryDate.getDate());
       if (now < thisYearAnniversary) years--;
-      document.querySelector('#days').textContent = days.toLocaleString('zh-CN');
-      document.querySelector('#hours').textContent = pad(hours);
-      document.querySelector('#minutes').textContent = pad(minutes);
-      document.querySelector('#seconds').textContent = pad(seconds);
-      document.querySelector('#years').textContent = Math.max(0, years);
-      document.querySelector('#elapsed').textContent = `已经一起走过 ${days.toLocaleString('zh-CN')} 天 ${hours} 小时 ${minutes} 分钟`;
+      counterEls.days.textContent = days.toLocaleString('zh-CN');
+      counterEls.hours.textContent = pad(hours);
+      counterEls.minutes.textContent = pad(minutes);
+      counterEls.seconds.textContent = pad(seconds);
+      counterEls.years.textContent = Math.max(0, years);
+      counterEls.elapsed.textContent = `已经一起走过 ${days.toLocaleString('zh-CN')} 天 ${hours} 小时 ${minutes} 分钟`;
     }
     updateCounter(); setInterval(updateCounter, 1000);
 

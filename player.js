@@ -4,7 +4,7 @@
 // 功能：播放/暂停、切歌、音量滑条、记忆断点（切页/刷新续播）、跨标签页同步、音效开关。
 import { sfx, playArpeggioOnce } from './sfx.js';
 
-const LS = { vol: 'rp-volume', on: 'rp-enabled', idx: 'rp-index', time: 'rp-time' };
+const LS = { vol: 'rp-volume', on: 'rp-enabled', idx: 'rp-index', time: 'rp-time', timeTs: 'rp-time-ts' };
 const ls = {
   get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* 忽略 */ } },
@@ -12,7 +12,7 @@ const ls = {
 
 let tracks = [];
 let curIndex = Math.max(0, parseInt(ls.get(LS.idx, '0'), 10) || 0);
-let wantPlay = ls.get(LS.on, 'off') === 'on';   // 用户是否希望音乐播放
+let wantPlay = ls.get(LS.on, 'on') !== 'off';   // 默认开：进入页面即尝试播放（被拦截则在首次交互时续播）
 let panelOpen = false;
 let audio = null;
 let bc = null;
@@ -69,6 +69,7 @@ style.textContent = `
 @media (prefers-reduced-motion: reduce) { #romanticPlayer .rp-disc, #romanticPlayer .rp-label { animation: none !important; } }
 `;
 document.head.appendChild(style);
+style.setAttribute('data-rn-keep', '');
 
 /* ---------- 注入 DOM ---------- */
 const root = document.createElement('div');
@@ -122,11 +123,15 @@ function ensureAudio() {
     barFill.style.width = `${(p * 100).toFixed(1)}%`;
     curEl.textContent = fmt(audio.currentTime);
   });
-  // 记忆断点：播放中每 2 秒存一次进度
+  // 记忆断点：播放中每 2 秒存一次进度 + 时间戳，用于跨页续播时按流逝时间推进
   let lastSave = 0;
   audio.addEventListener('timeupdate', () => {
     const now = Date.now();
-    if (now - lastSave > 2000) { lastSave = now; ls.set(LS.time, String(audio.currentTime || 0)); }
+    if (now - lastSave > 2000) {
+      lastSave = now;
+      ls.set(LS.time, String(audio.currentTime || 0));
+      ls.set(LS.timeTs, String(now));
+    }
   });
   audio.addEventListener('ended', () => { nextTrack(1, true); });
   return audio;
@@ -147,7 +152,7 @@ function loadTrack(i, { autoplay = false, resume = 0 } = {}) {
   a.src = srcOf(t);
   renderList();
   const start = () => {
-    if (resume > 0) { try { a.currentTime = resume; } catch { /* 忽略 */ } }
+    if (resume > 0) { try { a.currentTime = Math.min(resume, a.duration || resume); } catch { /* 忽略 */ } }
     if (autoplay) play();
   };
   if (a.readyState >= 1) start();
@@ -168,7 +173,10 @@ function play() {
 
 function pause({ remember = true } = {}) {
   if (!audio) return;
-  if (remember) ls.set(LS.time, String(audio.currentTime || 0));
+  if (remember) {
+    ls.set(LS.time, String(audio.currentTime || 0));
+    ls.set(LS.timeTs, String(Date.now()));
+  }
   audio.pause();
   root.classList.remove('is-playing');
   toggleBtn.textContent = '▶';
@@ -257,29 +265,66 @@ function renderSfxBtn() {
 renderSfxBtn();
 
 /* ---------- 加载播放列表 ---------- */
-async function loadPlaylist() {
-  try {
-    const res = await fetch('music/playlist.json', { cache: 'no-store' });
-    const data = await res.json();
-    tracks = Array.isArray(data) ? data : (data.tracks || []);
-  } catch { tracks = []; }
+function applyTracks(list) {
+  tracks = Array.isArray(list) ? list : (list.tracks || []);
   if (tracks.length) {
     emptyEl.hidden = true;
     listEl.hidden = false;
-    loadTrack(curIndex, { autoplay: false });
-    // 记忆断点：启动后用户首次点击页面时，若上次开着音乐则从断点轻声续播
-    if (wantPlay) {
-      const resume = () => {
-        if (!audio || !audio.src) loadTrack(curIndex, { resume: parseFloat(ls.get(LS.time, '0')) || 0 });
-        play();
-      };
-      window.addEventListener('pointerdown', resume, { once: true, capture: true });
-    }
+    // 跨页续播：按上次保存的进度 + 页面切换期间流逝的时间，恢复到"像是没断过"的位置
+    const savedTime = parseFloat(ls.get(LS.time, '0')) || 0;
+    const savedTs = parseInt(ls.get(LS.timeTs, '0'), 10) || Date.now();
+    const resumePos = Math.max(0, savedTime + (Date.now() - savedTs) / 1000);
+    loadTrack(curIndex, { autoplay: false, resume: resumePos });
+    // 进入页面即尝试自动播放；若被浏览器拦截，则在用户首次交互（点/滑/按）时自动续播
+    if (wantPlay) tryAutoPlay();
   } else {
     emptyEl.hidden = false;
     titleEl.textContent = '— 暂无曲目 —';
   }
 }
+
+async function loadPlaylist() {
+  // 优先用 sessionStorage 缓存的曲目立即初始化，
+  // 这样跨页跳转时能在浏览器"用户激活窗口期"内立刻续播，避免被自动播放策略拦截。
+  let cached = null;
+  try { cached = JSON.parse(sessionStorage.getItem('rp-tracks-cache') || 'null'); } catch { /* 忽略 */ }
+  if (cached && cached.length) applyTracks(cached);
+
+  // 后台从网络刷新曲目（更新后下次加载生效）
+  try {
+    const res = await fetch('music/playlist.json', { cache: 'no-store' });
+    const data = await res.json();
+    const fresh = Array.isArray(data) ? data : (data.tracks || []);
+    if (fresh.length) {
+      try { sessionStorage.setItem('rp-tracks-cache', JSON.stringify(fresh)); } catch { /* 忽略 */ }
+      if (!tracks.length) applyTracks(fresh);
+      else renderList();
+    }
+  } catch { /* 离线时沿用缓存 */ }
+}
+
+// 自动播放：先直接 play()，失败则挂一次性手势监听
+let gestureBound = false;
+function tryAutoPlay() {
+  play();
+  if (gestureBound) return;
+  gestureBound = true;
+  const onGesture = () => {
+    if (audio && audio.paused && wantPlay) play();
+  };
+  ['pointerdown', 'touchstart', 'keydown'].forEach(ev =>
+    window.addEventListener(ev, onGesture, { once: true, passive: true })
+  );
+}
+
+// 切页/刷新前把最新进度存下，保证跨页续播位置准确
+window.addEventListener('pagehide', () => {
+  if (audio) {
+    ls.set(LS.time, String(audio.currentTime || 0));
+    ls.set(LS.timeTs, String(Date.now()));
+  }
+});
+
 loadPlaylist();
 
 // 开场琶音彩蛋（仅首次访问）

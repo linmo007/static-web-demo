@@ -21,8 +21,9 @@ style.textContent = `
 #romanticNav .rn-menu a:hover { background: rgba(232,183,203,.2); color: #9b5f7d; }
 #romanticNav .rn-menu a.rn-current { background: rgba(232,183,203,.32); color: #9b5f7d; font-weight: 600; }
 #romanticNav .rn-menu a .rn-ico { color: #bd879e; font-style: normal; }
-/* 柔光转场：点击导航后整页淡出 */
-body.rn-leaving { opacity: 0 !important; transition: opacity .38s ease; }
+/* 柔光转场：换页时整页淡出/淡入 */
+body { transition: opacity .38s ease; }
+body.rn-leaving { opacity: 0 !important; }
 @media (prefers-color-scheme: dark) {
   #romanticNav .rn-btn { background: rgba(52,42,58,.85); border-color: rgba(255,255,255,.14); color: #d5a0b8; }
   #romanticNav .rn-menu { background: rgba(52,42,58,.94); border-color: rgba(255,255,255,.14); }
@@ -34,6 +35,7 @@ body.rn-leaving { opacity: 0 !important; transition: opacity .38s ease; }
 @media (prefers-reduced-motion: reduce) { #romanticNav .rn-heart { animation: none !important; } }
 `;
 document.head.appendChild(style);
+style.setAttribute('data-rn-keep', '');
 
 const nav = document.createElement('div');
 nav.id = 'romanticNav';
@@ -60,17 +62,147 @@ document.addEventListener('pointerdown', (event) => {
   }
 });
 
-// 柔光转场：站内链接点击后淡出再跳转
+// ============ SPA 无刷新换页：站内跳转不重新加载文档，音乐得以连续播放 ============
+// 原理：拦截站内链接 → 拉取目标页 HTML → 替换 <main> 与页面样式 → 执行页面脚本。
+// 音频播放器等 body 级组件不在 <main> 内，全程存活。
+const pageCache = new Map();          // 规范化路径 -> { main, title, init }
+let currentPath = normPath(location.href);
+let navBusy = false;
+let pendingNav = null;
+
+function normPath(href) {
+  try {
+    const u = new URL(href, location.href);
+    return u.pathname.endsWith('/') ? u.pathname + 'index.html' : u.pathname;
+  } catch { return href; }
+}
+
+function isInternalNav(link, event) {
+  if (event.defaultPrevented) return false;
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+  if (link.hasAttribute('download') || (link.target && link.target !== '_self')) return false;
+  const raw = link.getAttribute('href');
+  if (!raw || /^(https?:|#|mailto:|tel:|data:)/i.test(raw)) return false;
+  const url = new URL(link.href, location.href);
+  if (url.origin !== location.origin) return false;
+  const p = normPath(url.href);
+  return p.endsWith('.html') || p.endsWith('/');
+}
+
+function closeMenu() {
+  nav.classList.remove('is-open');
+  navBtn.setAttribute('aria-expanded', 'false');
+}
+
+function updateCurrentNav(path) {
+  nav.querySelectorAll('.rn-menu a').forEach(a => {
+    const cur = normPath(a.getAttribute('href')) === path;
+    a.classList.toggle('rn-current', cur);
+    if (cur) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+}
+
+async function navigate(href, { push = true } = {}) {
+  const url = new URL(href, location.href);
+  const path = normPath(url.href);
+  if (navBusy) { pendingNav = { href, push }; return; }
+  navBusy = true;
+  try {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // 点击前进时：把离开页的滚动位置存进当前历史条目（popstate 时恢复目标页滚动）
+    if (push) {
+      try { history.replaceState({ ...(history.state || {}), rnScroll: window.scrollY }, ''); } catch { /* 忽略 */ }
+    }
+    // 拉取目标页（no-store 保证拿到最新；失败则退回整页跳转）
+    const startedAt = Date.now();
+    let doc;
+    try {
+      const res = await fetch(url.href, { cache: 'no-store' });
+      if (!res.ok) throw new Error(String(res.status));
+      doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      if (!doc.querySelector('main')) throw new Error('no main');
+    } catch {
+      location.href = url.href;
+      return;
+    }
+    // 淡出（预留动画时间；fetch 已耗时则补齐到 380ms）
+    if (!reduce) {
+      document.body.classList.add('rn-leaving');
+      const wait = Math.max(0, 380 - (Date.now() - startedAt));
+      if (wait) await new Promise(r => setTimeout(r, wait));
+    }
+    // 缓存当前页（含已绑定事件的 DOM），返回时原样恢复
+    const oldMain = document.querySelector('main');
+    pageCache.set(currentPath, { main: oldMain, title: document.title, init: true });
+    // 目标页：优先用缓存
+    let entry = pageCache.get(path);
+    if (!entry) {
+      entry = { main: document.importNode(doc.querySelector('main'), true), title: doc.title, init: false };
+      pageCache.set(path, entry);
+    }
+    // 换页面样式（运行时注入的样式带 data-rn-keep，保留）
+    document.head.querySelectorAll('style:not([data-rn-keep])').forEach(s => s.remove());
+    doc.head.querySelectorAll('style').forEach(s => document.head.appendChild(document.importNode(s, true)));
+    // 换内容
+    oldMain.replaceWith(entry.main);
+    document.title = entry.title;
+    if (push) { try { history.pushState({ rnScroll: 0 }, '', url.href); } catch { /* 忽略 */ } }
+    // 首次进入该页：执行其内联模块脚本（页面专属逻辑；带 src 的共享脚本已加载，跳过）。
+    // 给换入的 <main> 打令牌：脚本等目标页真正挂载后再跑，若期间用户已切走则放弃执行，
+    // 避免脚本在错误的页面上查询元素报 null 错误。
+    if (!entry.init) {
+      entry.init = true;
+      const token = 'rn-' + Math.random().toString(36).slice(2);
+      entry.main.dataset.rnToken = token;
+      doc.body.querySelectorAll('script[type="module"]:not([src])').forEach(s => {
+        const el = document.createElement('script');
+        el.type = 'module';
+        el.textContent =
+          `{ let __ok = false;\n` +
+          `  for (let i = 0; i < 100; i++) { if (document.querySelector('main[data-rn-token="${token}"]')) { __ok = true; break; } await new Promise(r => setTimeout(r, 50)); }\n` +
+          `  if (!__ok) throw new Error('[nav] 页面已切换，跳过本页脚本');\n` +
+          `}\n` + s.textContent;
+        document.body.appendChild(el);
+      });
+    }
+    currentPath = path;
+    updateCurrentNav(path);
+    // 滚动：前进回顶部；后退恢复离开时位置
+    window.scrollTo(0, push ? 0 : ((history.state && history.state.rnScroll) || 0));
+    document.body.classList.remove('rn-leaving');
+  } finally {
+    navBusy = false;
+    if (pendingNav) { const p = pendingNav; pendingNav = null; navigate(p.href, { push: p.push }); }
+  }
+}
+
+// 站内链接点击 → 无刷新换页
 document.addEventListener('click', (event) => {
   const link = event.target.closest('a[href]');
-  if (!link) return;
-  const href = link.getAttribute('href');
-  if (!href || /^(https?:|#|mailto:)/i.test(href)) return;
-  if (href.split('#')[0] === here) return;
+  if (!link || !isInternalNav(link, event)) return;
   event.preventDefault();
-  document.body.classList.add('rn-leaving');
-  setTimeout(() => { location.href = href; }, 380);
+  closeMenu();
+  const target = normPath(link.href);
+  if (target === currentPath) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  navigate(link.href, { push: true });
 });
+
+// 浏览器后退/前进：恢复对应页面（音乐继续，不重载文档）
+window.addEventListener('popstate', () => {
+  const p = normPath(location.href);
+  if (p === currentPath) return;
+  navigate(location.href, { push: false });
+});
+
+// 滚动时把位置记入当前历史条目（供后退恢复）
+let scrollSaveTimer = 0;
+window.addEventListener('scroll', () => {
+  clearTimeout(scrollSaveTimer);
+  scrollSaveTimer = setTimeout(() => {
+    try { history.replaceState({ ...(history.state || {}), rnScroll: window.scrollY }, ''); } catch { /* 忽略 */ }
+  }, 200);
+}, { passive: true });
 
 // 从浏览器"后退缓存(bfcache)"返回时，清除残留的淡出状态，
 // 否则上一页会带着 rn-leaving（opacity:0）被恢复，看起来像白屏。

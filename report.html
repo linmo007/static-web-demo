@@ -164,7 +164,7 @@
   <script type="module" src="player.js"></script>
   <script type="module" src="ambient.js"></script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -176,13 +176,31 @@
       messagingSenderId: "677427976990",
       appId: "1:677427976990:web:1f528a27eada09d22a470f"
     };
-    const db = getDatabase(initializeApp(firebaseConfig));
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
     // 与首页一致的纪念日
     const anniversaryDate = new Date(2023, 3, 20, 0, 0, 0);
     const pad = n => String(n).padStart(2, '0');
 
+    // 启动时捕获元素引用（换页后定时器写旧引用即可，避免重查报 null）
+    const rptEls = {
+      days: document.querySelector('#rptDays'),
+      hours: document.querySelector('#rptHours'),
+      months: document.querySelector('#rptMonths'),
+      years: document.querySelector('#rptYears'),
+      elapsed: document.querySelector('#rptElapsed'),
+      milestone: document.querySelector('#rptMilestone'),
+      total: document.querySelector('#rptTotal'),
+      done: document.querySelector('#rptDone'),
+      todo: document.querySelector('#rptTodo'),
+      ringText: document.querySelector('#ringText'),
+      ringFg: document.querySelector('#ringFg'),
+      authorRank: document.querySelector('#authorRank'),
+      recentWishes: document.querySelector('#recentWishes'),
+    };
     function renderTime() {
+      if (!rptEls.days) return;
       const now = new Date();
       const diff = Math.max(0, now - anniversaryDate);
       const sec = Math.floor(diff / 1000);
@@ -191,21 +209,22 @@
       const months = Math.floor(days / 30.4375);
       let years = now.getFullYear() - anniversaryDate.getFullYear();
       if (now < new Date(now.getFullYear(), anniversaryDate.getMonth(), anniversaryDate.getDate())) years--;
-      document.querySelector('#rptDays').textContent = days.toLocaleString('zh-CN');
-      document.querySelector('#rptHours').textContent = (days * 24 + hours).toLocaleString('zh-CN');
-      document.querySelector('#rptMonths').textContent = months;
-      document.querySelector('#rptYears').textContent = Math.max(0, years);
-      document.querySelector('#rptElapsed').textContent =
+      rptEls.days.textContent = days.toLocaleString('zh-CN');
+      rptEls.hours.textContent = (days * 24 + hours).toLocaleString('zh-CN');
+      rptEls.months.textContent = months;
+      rptEls.years.textContent = Math.max(0, years);
+      rptEls.elapsed.textContent =
         `也就是 ${days.toLocaleString('zh-CN')} 天 ${hours} 小时 ${pad(Math.floor((sec % 3600) / 60))} 分钟的喜欢`;
       const totalDays = Math.max(1, days + 1);
       const next = (Math.floor((totalDays - 1) / 100) + 1) * 100;
       const remain = next - totalDays;
-      document.querySelector('#rptMilestone').textContent =
+      rptEls.milestone.textContent =
         remain <= 0 ? '今天，就是值得庆祝的日子 ♡' : `距离第 ${next} 天，还有 ${remain} 天`;
     }
     renderTime(); setInterval(renderTime, 1000);
 
     onValue(ref(db, 'wishes'), snapshot => {
+      if (!rptEls.days) return; // 页面已切走，跳过本次渲染
       const data = snapshot.val() || {};
       const list = Object.entries(data).map(([key, w]) => ({ key, ...w }));
       const total = list.length;
@@ -213,15 +232,15 @@
       const todo = total - done;
       const rate = total ? Math.round(done / total * 100) : 0;
 
-      document.querySelector('#rptTotal').textContent = total;
-      document.querySelector('#rptDone').textContent = done;
-      document.querySelector('#rptTodo').textContent = todo;
-      document.querySelector('#ringText').textContent = total ? rate + '%' : '—';
+      rptEls.total.textContent = total;
+      rptEls.done.textContent = done;
+      rptEls.todo.textContent = todo;
+      rptEls.ringText.textContent = total ? rate + '%' : '—';
       const C = 2 * Math.PI * 50;
-      document.querySelector('#ringFg').style.strokeDashoffset = String(C * (1 - rate / 100));
+      rptEls.ringFg.style.strokeDashoffset = String(C * (1 - rate / 100));
 
       // 署名排行（未署名计入"神秘的人"）
-      const rankEl = document.querySelector('#authorRank');
+      const rankEl = rptEls.authorRank;
       const counts = {};
       list.forEach(w => { const name = (w.author || '').trim() || '神秘的人'; counts[name] = (counts[name] || 0) + 1; });
       const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -240,7 +259,7 @@
 
       // 最近的小约定（按写入顺序取后 5 条）
       const recent = list.slice(-5).reverse();
-      const recentEl = document.querySelector('#recentWishes');
+      const recentEl = rptEls.recentWishes;
       if (!recent.length) {
         recentEl.innerHTML = '<li class="rank-empty">还没有愿望，去首页写下第一个约定吧 ♡</li>';
       } else {
@@ -250,8 +269,9 @@
           </li>`).join('');
       }
     }, () => {
-      document.querySelector('#authorRank').innerHTML = '<li class="rank-empty">数据加载失败，请检查网络 ♡</li>';
-      document.querySelector('#recentWishes').innerHTML = '<li class="rank-empty">数据加载失败，请检查网络 ♡</li>';
+      if (!rptEls.authorRank) return;
+      rptEls.authorRank.innerHTML = '<li class="rank-empty">数据加载失败，请检查网络 ♡</li>';
+      rptEls.recentWishes.innerHTML = '<li class="rank-empty">数据加载失败，请检查网络 ♡</li>';
     });
 
     // 滚动淡入

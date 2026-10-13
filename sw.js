@@ -48,12 +48,14 @@ self.addEventListener('fetch', event => {
   if (url.hostname.includes('firebaseio.com') || url.hostname.includes('firebasedatabase.app') || url.hostname.includes('gstatic.com')) {
     return;
   }
-  // 页面跳转（HTML）：网络优先——在线时永远拿最新页面，离线时才回退缓存
-  if (event.request.mode === 'navigate') {
+  // 页面（真实跳转或 SPA fetch 拉取的 HTML）：网络优先——在线时永远拿最新页面，离线时才回退缓存
+  const isPage = event.request.mode === 'navigate' ||
+    (url.origin === location.origin && (url.pathname.endsWith('.html') || url.pathname.endsWith('/')));
+  if (isPage) {
     event.respondWith(
       fetch(event.request).then(response => {
         const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put('./index.html', clone)).catch(() => {});
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => {});
         return response;
       }).catch(() => caches.match(event.request).then(c => c || caches.match('./index.html')))
     );

@@ -80,6 +80,13 @@
     .mail-submit:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(160,111,135,.36); }
     .mail-note { margin: 0; font-size: .76rem; color: #a9909e; line-height: 1.7; }
 
+    .mail-mode { display: flex; gap: 10px; flex-wrap: wrap; }
+    .mail-mode-opt { position: relative; cursor: pointer; }
+    .mail-mode-opt input { position: absolute; opacity: 0; pointer-events: none; }
+    .mail-mode-opt span { display: inline-block; padding: 8px 15px; border-radius: 99px; border: 1px dashed rgba(169,118,141,.45); background: rgba(255,255,255,.35); color: #8b7381; font: .8rem "Microsoft YaHei", sans-serif; transition: all .25s; }
+    .mail-mode-opt input:checked + span { background: linear-gradient(135deg, #e8b7cb, #bd879e); color: #fff; border-color: transparent; box-shadow: 0 6px 16px rgba(160,111,135,.28); }
+    .mail-row input:disabled { opacity: .4; cursor: not-allowed; }
+
     .future-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 13px; }
     .future-item { border-radius: 15px; border: 1px dashed rgba(169,118,141,.4); background: rgba(255,255,255,.28); padding: 15px 17px; position: relative; }
     .future-item.is-ready { border-style: solid; border-color: rgba(189,135,158,.55); background: rgba(255,255,255,.42); }
@@ -113,6 +120,8 @@
       .mail-form textarea { background: rgba(255,255,255,.07); border-color: rgba(209,145,173,.35); color: #c3a8bd; }
       .mail-form textarea:focus { background: rgba(255,255,255,.12); }
       .mail-row input { background: rgba(255,255,255,.07); border-color: rgba(209,145,173,.35); color: #c3a8bd; }
+      .mail-mode-opt span { background: rgba(255,255,255,.08); border-color: rgba(209,145,173,.4); color: #b49cae; }
+      .mail-mode-opt input:checked + span { color: #fff; }
       .mail-note, .future-author { color: #8d7386; } .future-date { color: #d5a0b8; } .future-count { color: #a97e97; }
       .future-item { background: rgba(255,255,255,.06); border-color: rgba(209,145,173,.3); }
       .future-item.is-ready { background: rgba(255,255,255,.1); border-color: rgba(209,145,173,.5); }
@@ -186,13 +195,17 @@
       <h2 class="section-title">时光信箱</h2>
       <div class="mailbox glass">
         <form class="mail-form" id="mailForm">
-          <textarea id="mailContent" maxlength="600" required placeholder="写一封给未来的信吧：想说的话、小小的愿望、到那天再揭晓的秘密……（600 字以内）"></textarea>
+          <textarea id="mailContent" maxlength="600" required placeholder="写一封信吧：可以是此刻就能拆开的心意，也可以是留给未来某天的秘密……（600 字以内）"></textarea>
+          <div class="mail-mode" role="radiogroup" aria-label="信件开启方式">
+            <label class="mail-mode-opt"><input type="radio" name="mailMode" value="now" checked><span>🔓 现在就可以打开</span></label>
+            <label class="mail-mode-opt"><input type="radio" name="mailMode" value="future"><span>🔒 未来某天打开</span></label>
+          </div>
           <div class="mail-row">
-            <input type="date" id="mailDate" required aria-label="开启日期">
+            <input type="date" id="mailDate" aria-label="开启日期" disabled>
             <input type="text" id="mailAuthor" maxlength="12" placeholder="署名（选填）" aria-label="署名">
             <button class="mail-submit" type="submit">封入信箱 ♡</button>
           </div>
-          <p class="mail-note">信件会被好好保管，只有到了你选定的那一天，才可以拆开。</p>
+          <p class="mail-note" id="mailNote">信件会被好好保管，现在就能在信箱里拆开阅读。</p>
         </form>
         <ul class="future-list" id="futureList">
           <li class="future-empty">信箱还是空的，写第一封给未来的信吧 ♡</li>
@@ -208,7 +221,7 @@
   <script type="module" src="player.js"></script>
   <script type="module" src="ambient.js"></script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
     import { getDatabase, ref, push, remove, onValue } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
     import { sfx } from './sfx.js';
 
@@ -221,7 +234,8 @@
       messagingSenderId: "677427976990",
       appId: "1:677427976990:web:1f528a27eada09d22a470f"
     };
-    const db = getDatabase(initializeApp(firebaseConfig));
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const db = getDatabase(app);
     const lettersRef = ref(db, 'future-letters');
 
     // 情书拆封动画（支持鼠标点击与键盘 Enter/空格）
@@ -249,9 +263,27 @@
     const listEl = document.querySelector('#futureList');
     const openedKey = new Set();
 
-    // 日期下限：明天
+    // 开启方式切换：立即可拆 / 未来某天
+    const modeRadios = form.querySelectorAll('input[name="mailMode"]');
+    const noteEl = document.querySelector('#mailNote');
     const tomorrow = new Date(Date.now() + 86400000);
-    dateInput.min = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+    const applyMode = () => {
+      const mode = form.querySelector('input[name="mailMode"]:checked').value;
+      const isNow = mode === 'now';
+      dateInput.disabled = isNow;
+      dateInput.required = !isNow;
+      if (isNow) {
+        dateInput.removeAttribute('min');
+        noteEl.textContent = '信件会被好好保管，现在就能在信箱里拆开阅读。';
+      } else {
+        dateInput.min = tomorrowStr;
+        noteEl.textContent = '信件会被好好保管，只有到了你选定的那一天，才可以拆开。';
+      }
+    };
+    modeRadios.forEach(r => r.addEventListener('change', applyMode));
+    applyMode();
+
     try { authorInput.value = localStorage.getItem('romantic-author') || ''; } catch {}
 
     const todayStr = () => {
@@ -263,9 +295,15 @@
     form.addEventListener('submit', event => {
       event.preventDefault();
       const content = contentInput.value.trim();
-      const openDate = dateInput.value;
-      if (!content || !openDate) return;
-      if (daysUntil(openDate) < 1) { dateInput.focus(); return; }
+      const mode = form.querySelector('input[name="mailMode"]:checked').value;
+      const isNow = mode === 'now';
+      const openDate = isNow ? todayStr() : dateInput.value;
+      if (!content) return;
+      // 未来信：必须选一个至少明天的日期
+      if (!isNow) {
+        if (!openDate) { dateInput.focus(); return; }
+        if (daysUntil(openDate) < 1) { dateInput.focus(); return; }
+      }
       const author = authorInput.value.trim().slice(0, 12);
       try { localStorage.setItem('romantic-author', author); } catch {}
       push(lettersRef, { content, openDate, author, createdAt: Date.now() });
@@ -278,19 +316,20 @@
       const entries = Object.entries(data || {}).sort((a, b) => (a[1].openDate || '').localeCompare(b[1].openDate || ''));
       listEl.innerHTML = '';
       if (!entries.length) {
-        listEl.innerHTML = '<li class="future-empty">信箱还是空的，写第一封给未来的信吧 ♡</li>';
+        listEl.innerHTML = '<li class="future-empty">信箱还是空的，写下第一封信吧 ♡</li>';
         return;
       }
       const today = todayStr();
       entries.forEach(([key, letter]) => {
         const ready = letter.openDate <= today;
         const remain = daysUntil(letter.openDate);
+        const isToday = letter.openDate === today;
         const li = document.createElement('li');
         li.className = 'future-item' + (ready ? ' is-ready' : '');
         li.dataset.key = key;
         li.innerHTML = `
           <div class="future-meta">
-            <span class="future-date">${ready ? '✉ 已到开启之日' : '🔒 ' + letter.openDate + ' 开启'}</span>
+            <span class="future-date">${isToday ? '✉ 立即可拆' : (ready ? '✉ 已到开启之日' : '🔒 ' + letter.openDate + ' 开启')}</span>
             ${letter.author ? `<span class="future-author">—— ${letter.author}</span>` : ''}
             ${!ready ? `<span class="future-count">还有 ${remain} 天</span>` : ''}
             <span class="future-actions">
