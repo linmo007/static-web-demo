@@ -249,40 +249,6 @@
       100% { transform: translate3d(1.2vw, -26vh, 0); opacity: 0; }
     }
 
-    /* ============ 线条人物：手机端极淡贴在底部两角；宽屏分列两侧、视线中轴相遇 ============ */
-    .couple-layer { display: block; position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-    .couple { position: absolute; bottom: 0; margin: 0; pointer-events: none; animation: coupleBreath 6s ease-in-out infinite; }
-    .couple-woman { animation-delay: -3s; }
-    .couple img { display: block; width: auto; object-fit: contain; object-position: bottom; }
-    .couple-man { left: -24px; }
-    .couple-man img { height: 16vh; opacity: .12; }
-    .couple-woman { right: -24px; }
-    .couple-woman img { height: 18vh; opacity: .12; }
-    .couple .say { display: none; }
-    .couple-spark { display: none; }
-    .couple-heart { position: fixed; left: 50%; top: 54%; z-index: 5; color: #c984a0; font-size: 46px; pointer-events: none; text-shadow: 0 6px 18px rgba(190,105,139,.4); animation: coupleHeartRise 2.6s ease-out forwards; }
-    @keyframes coupleBreath { 50% { transform: scale(1.008); } }
-    @keyframes coupleHeartRise {
-      0% { opacity: 0; transform: translate(-50%, -26%) scale(.4); }
-      25% { opacity: .95; }
-      100% { opacity: 0; transform: translate(-50%, -150%) scale(1.5); }
-    }
-    @media (min-width: 1200px) {
-      .couple { pointer-events: auto; }
-      .couple img { opacity: .32; transition: opacity .6s ease, transform .9s cubic-bezier(.2,.8,.2,1); filter: drop-shadow(0 0 20px rgba(255,255,255,.22)); }
-      .couple:hover img { opacity: .6; }
-      .couple-man { left: max(4px, calc((100vw - 920px) / 2 - 320px)); }
-      .couple-man img { height: 60vh; }
-      .couple-woman { right: max(4px, calc((100vw - 920px) / 2 - 330px)); }
-      .couple-woman img { height: 64vh; }
-      /* 纪念日：两人向中轴轻轻靠近，之间亮起光点 */
-      .couple-layer.is-anniversary .couple-man img { transform: translateX(5vw); }
-      .couple-layer.is-anniversary .couple-woman img { transform: translateX(-5vw); }
-      .couple-spark { display: block; position: absolute; left: 50%; bottom: 13vh; transform: translateX(-50%); color: #ffd9e8; font-size: 22px; text-shadow: 0 0 14px #ffc2dc, 0 0 34px rgba(255,194,220,.8); animation: twinkle 2.4s ease-in-out infinite; }
-      .couple .say { display: block; position: absolute; top: 8px; left: 50%; transform: translate(-50%, 8px); padding: 7px 14px; border-radius: 12px; background: rgba(255,250,252,.92); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 8px 22px rgba(118,78,113,.2); color: #9b5f7d; font: .78rem "Microsoft YaHei", sans-serif; letter-spacing: .06em; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .45s ease, transform .45s ease; }
-      .couple.is-saying .say { opacity: 1; transform: translate(-50%, 0); }
-    }
-
     /* ============ 打字机情书：展开后文字逐字浮现 ============ */
     .more-love p .t { opacity: 0; animation: typeIn .06s steps(1) forwards; }
     @keyframes typeIn { to { opacity: 1; } }
@@ -321,15 +287,8 @@
       .photo, .photo-media { background: rgba(255,255,255,.08); }
       .wish-toast { background: rgba(52, 42, 58, .85); border-color: rgba(255,255,255,.14); color: #d5a8bd; }
       .p-fire { color: #f3d98d; text-shadow: 0 0 10px #d9b45c, 0 0 24px rgba(217, 180, 92, .6); }
-      .couple img { opacity: .17; }
-      .couple:hover img { opacity: .68; }
-      .couple .say { background: rgba(52, 42, 58, .94); border-color: rgba(255,255,255,.14); color: #d5a0b8; }
-      .couple-heart { color: #a97e97; }
       .type-caret { color: #d5a0b8; }
       footer { color: rgba(213, 194, 210, .6); }
-    }
-    @media (prefers-color-scheme: dark) and (min-width: 1200px) {
-      .couple img { opacity: .4; }
     }
     @media (max-width: 560px) { main { width: min(100% - 24px, 920px); padding-top: 40px; }.gallery { gap: 9px; }.photo { border-radius: 14px; }.photo:nth-child(2) { transform: translateY(10px); }.time-grid { gap: 5px; }.time-unit { padding: 9px 2px; }.wish-delete { opacity: 1; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
@@ -339,18 +298,6 @@
   <div class="ambient"><i class="orb one"></i><i class="orb two"></i></div>
   <div id="hearts" aria-hidden="true"></div>
   <div class="wish-toast" id="wishToast" role="status">有人写下了新愿望 ♡</div>
-
-  <!-- 线条人物：左侧男生望右、右侧女生望左，视线在内容中轴相遇（≥1200px 显示） -->
-  <aside class="couple-layer" aria-hidden="true">
-    <figure class="couple couple-man" id="coupleMan">
-      <img src="line-man.png" alt="" loading="lazy" decoding="async">
-      <figcaption class="say">……想她了</figcaption>
-    </figure>
-    <figure class="couple couple-woman" id="coupleWoman">
-      <img src="line-woman.png" alt="" loading="lazy" decoding="async">
-      <figcaption class="say">……在想你</figcaption>
-    </figure>
-  </aside>
 
   <!-- 氛围装饰：小猫挂件 / 情诗 / 里程碑 / 星光（手机端为简化布局） -->
   <aside class="side-decor" aria-hidden="true">
@@ -827,55 +774,6 @@
     });
 
     // 背景四季粒子与点击爱心彩蛋由 ambient.js 统一提供。
-
-    // 线条人物：悬停 2 秒听到心声；两人都被问候过，中轴飘起相连的大爱心（一次性）。
-    const coupleLayer = document.querySelector('.couple-layer');
-    if (coupleLayer) {
-      const man = document.querySelector('#coupleMan');
-      const woman = document.querySelector('#coupleWoman');
-      const saidKey = who => `romantic-said-${who}`;
-      const heartKey = 'romantic-couple-heart';
-
-      function bindCouple(el, who) {
-        let timer = null;
-        el.addEventListener('mouseenter', () => {
-          timer = setTimeout(() => {
-            el.classList.add('is-saying');
-            try { localStorage.setItem(saidKey(who), '1'); } catch { /* 忽略 */ }
-            maybeJoinHearts();
-          }, 2000);
-        });
-        el.addEventListener('mouseleave', () => {
-          clearTimeout(timer);
-          el.classList.remove('is-saying');
-        });
-      }
-      bindCouple(man, 'man');
-      bindCouple(woman, 'woman');
-
-      function maybeJoinHearts() {
-        let both = false;
-        try {
-          both = localStorage.getItem(saidKey('man')) && localStorage.getItem(saidKey('woman')) && !localStorage.getItem(heartKey);
-        } catch { /* 忽略 */ }
-        if (!both) return;
-        try { localStorage.setItem(heartKey, '1'); } catch { /* 忽略 */ }
-        const big = document.createElement('span');
-        big.className = 'couple-heart';
-        big.textContent = '♥';
-        document.body.appendChild(big);
-        big.addEventListener('animationend', () => big.remove());
-      }
-
-      // 纪念日彩蛋：两人向中轴靠近，之间亮起温柔光点
-      if (isSpecialDay) {
-        coupleLayer.classList.add('is-anniversary');
-        const spark = document.createElement('span');
-        spark.className = 'couple-spark';
-        spark.textContent = '✦';
-        coupleLayer.appendChild(spark);
-      }
-    }
 
     /* 可选背景音乐（默认关闭：请准备本地 music.mp3 后取消下一行注释）
     const music = new Audio('music.mp3'); music.loop = true; */

@@ -3,6 +3,7 @@
 // 右上角 ♡ 悬浮钮展开页面导航；点击链接时柔光淡出后再跳转。
 const PAGES = [
   { href: 'index.html', label: '开场 · 心事', icon: '♡' },
+  { href: 'wheel.html', label: '今天吃什么', icon: '🍜' },
   { href: 'gallery.html', label: '时光相册', icon: '✧' },
   { href: 'letters.html', label: '情书珍藏', icon: '✉' },
   { href: 'report.html', label: '年度报告', icon: '✦' },

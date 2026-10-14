@@ -1,8 +1,9 @@
 /* Service Worker：HTML 页面网络优先（保证更新即时生效），静态资源缓存优先（离线可用）。 */
-const CACHE_NAME = 'love-wishes-v5';
+const CACHE_NAME = 'love-wishes-v6';
 const CORE_ASSETS = [
   './',
   './index.html',
+  './wheel.html',
   './gallery.html',
   './letters.html',
   './report.html',
@@ -15,8 +16,6 @@ const CORE_ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './charm-cat.png',
-  './line-man.png',
-  './line-woman.png',
   './44C0C187A706FC900C7E1657A618F81E.jpg',
   './7C48E35CE67184E610786CB72B12F37F.jpg',
   './7B236FCB471B1B363FC320CFD8392404.jpg'

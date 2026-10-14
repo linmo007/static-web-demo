@@ -82,9 +82,13 @@
     .up-row { display: flex; gap: 10px; flex-wrap: wrap; }
     .up-row input { flex: 1; min-width: 180px; padding: 10px 14px; border-radius: 99px; border: 1px dashed rgba(169,118,141,.45); outline: none; background: rgba(255,255,255,.5); color: #7e6372; font: .86rem "Microsoft YaHei", sans-serif; }
     .up-row input:focus { background: rgba(255,255,255,.75); }
-    .up-btn { padding: 10px 22px; border: none; border-radius: 99px; cursor: pointer; background: linear-gradient(135deg, #e8b7cb, #bd879e); color: #fff; font: .86rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; box-shadow: 0 8px 20px rgba(160,111,135,.28); transition: transform .25s, box-shadow .25s, opacity .25s; }
+    .up-btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 22px; border: none; border-radius: 99px; cursor: pointer; user-select: none; -webkit-user-select: none; background: linear-gradient(135deg, #e8b7cb, #bd879e); color: #fff; font: .86rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; box-shadow: 0 8px 20px rgba(160,111,135,.28); transition: transform .25s, box-shadow .25s, opacity .25s; }
     .up-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(160,111,135,.36); }
     .up-btn:disabled { opacity: .55; cursor: wait; transform: none; }
+    /* 文件输入：不能用 display:none（部分 iPhone 无法唤起选择器），用视觉隐藏保留可访问性 */
+    .up-file { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; opacity: 0; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
+    /* 仅本机暂存照片的小角标 */
+    .scrap .up-local { position: absolute; left: 6px; bottom: 34px; z-index: 4; padding: 2px 8px; border-radius: 99px; background: rgba(255,250,252,.9); color: #b06b87; font-size: .64rem; letter-spacing: .04em; pointer-events: none; }
     .up-status { margin: 12px 0 0; min-height: 1.2em; font-size: .76rem; color: #a97e97; letter-spacing: .04em; }
     .up-status.is-error { color: #c0607f; }
     /* 已上传照片的删除钮 */
@@ -130,12 +134,12 @@
     <section class="year-block reveal">
       <h2 class="year-title"><span class="year-badge">＋</span>贴上一张新照片</h2>
       <div class="uploader glass" id="uploader">
-        <p class="up-tip">点击「选择照片」（可一次选多张），或直接把照片拖到这里——会自动压缩上传，立刻出现在下方相册 ♡</p>
+        <p class="up-tip">点击「选择照片」（可一次选多张，手机可拍照或从相册选），或直接把照片拖到这里——会自动压缩上传，立刻出现在下方相册 ♡</p>
         <div class="up-row">
           <input type="text" id="photoCaption" maxlength="30" placeholder="给这组照片写句备注（选填，如：初秋的傍晚）" aria-label="照片备注">
-          <button type="button" class="up-btn" id="photoPick">📷 选择照片</button>
+          <label class="up-btn" id="photoPick" for="photoInput">📷 选择照片</label>
         </div>
-        <input type="file" id="photoInput" accept="image/*" multiple hidden>
+        <input type="file" id="photoInput" class="up-file" accept="image/*" multiple>
         <p class="up-status" id="upStatus" role="status" aria-live="polite"></p>
       </div>
     </section>
@@ -223,7 +227,7 @@
       if (event.key === 'Escape') closeLightbox();
     });
 
-    // ============ 照片上传：本地压缩为 JPEG（最长边 1280，质量 0.72）→ base64 存入数据库 ============
+    // ============ 照片上传：本地压缩 JPEG（手机长边 1080 / 电脑 1280）→ 优先云端；写入失败则暂存本机，恢复后自动补传 ============
     const uploader = document.querySelector('#uploader');
     const fileInput = document.querySelector('#photoInput');
     const pickBtn = document.querySelector('#photoPick');
@@ -232,6 +236,9 @@
     const uploadedSection = document.querySelector('#uploadedSection');
     const uploadGrid = document.querySelector('#uploadGrid');
     let busy = false;
+    const LOCAL_KEY = 'romantic-gallery-local-v1';
+    let cloudPhotos = [];
+    let flushing = false;
 
     const setStatus = (msg, isError = false) => {
       statusEl.textContent = msg || '';
@@ -239,14 +246,28 @@
     };
     const getAuthor = () => { try { return (localStorage.getItem('romantic-author') || '').trim().slice(0, 12); } catch { return ''; } };
 
+    // ---- 本机暂存：云端写入被拒（数据库规则未开放写入）或断网时保底，照片立即可见 ----
+    function loadLocal() {
+      try { const a = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
+    }
+    function saveLocal(list) { localStorage.setItem(LOCAL_KEY, JSON.stringify(list)); }
+    function addLocal(photo) { const list = loadLocal(); list.push(photo); saveLocal(list); renderPhotos(); }
+    function removeLocal(key) { saveLocal(loadLocal().filter(p => p.key !== key)); renderPhotos(); }
+
     function compressImage(file) {
       return new Promise((resolve, reject) => {
+        let done = false;
         const url = URL.createObjectURL(file);
+        const fail = msg => { if (done) return; done = true; clearTimeout(timer); URL.revokeObjectURL(url); reject(new Error(msg)); };
+        const timer = setTimeout(() => fail('图片读取超时（手机原图可能过大，请换一张或截图后重试）'), 20000);
         const img = new Image();
         img.onload = () => {
-          URL.revokeObjectURL(url);
-          const MAX = 1280;
+          if (done) return;
+          done = true; clearTimeout(timer); URL.revokeObjectURL(url);
+          // 窄屏手机压得更小，兼顾流量与本机存储容量
+          const MAX = window.matchMedia('(max-width: 560px)').matches ? 1080 : 1280;
           let { width, height } = img;
+          if (!width || !height) { reject(new Error('图片尺寸异常')); return; }
           if (width > MAX || height > MAX) {
             const ratio = Math.min(MAX / width, MAX / height);
             width = Math.round(width * ratio);
@@ -255,46 +276,58 @@
           const canvas = document.createElement('canvas');
           canvas.width = width; canvas.height = height;
           const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';            // PNG 透明底转 JPEG 先铺白底，避免黑屏
+          ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
-          // 照片统一转 JPEG；极小的图保留原清晰度
           resolve(canvas.toDataURL('image/jpeg', 0.72));
         };
-        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('图片读取失败')); };
+        img.onerror = () => fail('图片读取失败');
         img.src = url;
       });
     }
 
     async function handleFiles(fileList) {
       if (busy) return;
-      const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+      const files = Array.from(fileList || []).filter(f => f.type.startsWith('image/'));
+      try { fileInput.value = ''; } catch { /* 清空后同一照片可再次选取 */ }
       if (!files.length) { setStatus('请选择图片文件哦', true); return; }
-      busy = true; pickBtn.disabled = true;
+      busy = true;
+      pickBtn.setAttribute('aria-disabled', 'true'); pickBtn.style.pointerEvents = 'none';
       const caption = captionInput.value.trim().slice(0, 30);
       const author = getAuthor();
-      let ok = 0;
+      let cloudOk = 0, localOk = 0, fail = 0;
       try {
         for (let i = 0; i < files.length; i++) {
           setStatus(`正在压缩第 ${i + 1} / ${files.length} 张…`);
-          const dataUrl = await compressImage(files[i]);
+          let dataUrl;
+          try { dataUrl = await compressImage(files[i]); } catch { fail++; continue; }
+          const createdAt = Date.now() + i;
           setStatus(`正在上传第 ${i + 1} / ${files.length} 张…`);
-          await push(photosRef, { dataUrl, caption, author, createdAt: Date.now() });
-          ok++;
+          try {
+            await push(photosRef, { dataUrl, caption, author, createdAt });
+            cloudOk++;
+          } catch {
+            // 云端写入失败（数据库规则未开放 / 未登录 / 断网）→ 先存本机，随后自动补传
+            try {
+              addLocal({ key: 'local-' + createdAt + '-' + Math.random().toString(36).slice(2, 7), dataUrl, caption, author, createdAt });
+              localOk++;
+            } catch { fail++; }
+          }
         }
-        sfx.ding();
-        setStatus(ok === files.length ? `已上传 ${ok} 张，已经贴进相册啦 ♡` : `完成 ${ok} / ${files.length} 张`);
-        captionInput.value = '';
-      } catch (err) {
-        const denied = String(err && (err.code || err.message) || '').includes('PERMISSION_DENIED');
-        setStatus(denied
-          ? '上传被拒绝：需要在 Firebase 数据库规则里添加 gallery-photos 节点权限（联系站长更新规则）'
-          : '上传失败了，请检查网络后重试', true);
+        if (cloudOk) sfx.ding();
+        if (cloudOk && !localOk && !fail) setStatus(`已上传 ${cloudOk} 张，已经贴进相册啦 ♡`);
+        else if (localOk && !cloudOk) setStatus(`云端相册写入还没开放，${localOk} 张已先存在这台设备（带“本机”角标，仅本设备可见）；开放后会自动同步`, true);
+        else if (cloudOk || localOk) setStatus(`完成：${cloudOk} 张进了云端相册${localOk ? `，${localOk} 张暂存本机待自动同步` : ''}${fail ? `，${fail} 张失败` : ''}`);
+        else setStatus('没能保存照片，请换一张图片重试', true);
+        if (caption && (cloudOk || localOk)) captionInput.value = '';
+        if (cloudOk) flushLocal();
       } finally {
-        busy = false; pickBtn.disabled = false;
+        busy = false;
+        pickBtn.removeAttribute('aria-disabled'); pickBtn.style.pointerEvents = '';
         try { fileInput.value = ''; } catch { /* 忽略 */ }
       }
     }
 
-    pickBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => handleFiles(fileInput.files));
     ['dragenter', 'dragover'].forEach(ev =>
       uploader.addEventListener(ev, e => { e.preventDefault(); uploader.classList.add('is-dragover'); }));
@@ -306,38 +339,64 @@
       if (event.dataTransfer && event.dataTransfer.files.length) handleFiles(event.dataTransfer.files);
     });
 
-    // ============ 实时渲染已上传照片（最新在前） ============
+    // ============ 云端恢复后，把本机暂存的照片按顺序补传上去 ============
+    async function flushLocal() {
+      if (flushing) return;
+      const pending = loadLocal();
+      if (!pending.length) return;
+      flushing = true;
+      let migrated = 0;
+      for (const p of pending) {
+        try {
+          await push(photosRef, { dataUrl: p.dataUrl, caption: p.caption || '', author: p.author || '', createdAt: p.createdAt || Date.now() });
+          saveLocal(loadLocal().filter(x => x.key !== p.key));
+          migrated++;
+        } catch { break; }  // 云端仍不可写：保留暂存，等下次进入/上传时再试
+      }
+      flushing = false;
+      if (migrated) { renderPhotos(); sfx.ding(); setStatus(`本机暂存的 ${migrated} 张已自动同步进云端相册 ♡`); }
+    }
+
+    // ============ 实时渲染：云端照片 + 本机暂存（最新在前） ============
     const fmtDate = ts => {
       const d = new Date(ts);
       return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
     };
     const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-    onValue(photosRef, snapshot => {
-      const data = snapshot.val() || {};
-      const photos = Object.entries(data)
-        .map(([key, p]) => ({ key, ...p }))
-        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      if (!photos.length) { uploadedSection.hidden = true; uploadGrid.innerHTML = ''; return; }
+    function renderPhotos() {
+      const local = loadLocal().map(p => ({ ...p, local: true }));
+      const all = cloudPhotos.concat(local).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      if (!all.length) { uploadedSection.hidden = true; uploadGrid.innerHTML = ''; return; }
       uploadedSection.hidden = false;
       uploadedSection.classList.add('is-visible');
-      uploadGrid.innerHTML = photos.map(p => `
+      uploadGrid.innerHTML = all.map(p => `
         <figure class="scrap" data-key="${p.key}">
           <span class="tape"></span>
           <button type="button" class="up-del" data-del="${p.key}" aria-label="删除这张照片">×</button>
+          ${p.local ? '<span class="up-local">本机暂存</span>' : ''}
           <img src="${p.dataUrl}" alt="${escapeHtml(p.caption || '上传的照片')}" loading="lazy" decoding="async">
           <figcaption>${p.caption ? escapeHtml(p.caption) : fmtDate(p.createdAt || Date.now())}</figcaption>
         </figure>`).join('');
-    }, () => setStatus('相册暂时连不上，请检查网络', true));
+    }
 
-    // 删除照片（二次确认）
+    onValue(photosRef, snapshot => {
+      const data = snapshot.val() || {};
+      cloudPhotos = Object.entries(data).map(([key, p]) => ({ key, ...p }));
+      renderPhotos();
+      flushLocal();
+    }, () => { renderPhotos(); /* 读失败也不影响本机暂存照片显示，不弹错误打扰 */ });
+
+    // 删除照片（二次确认；本机暂存的只删本机记录）
     uploadGrid.addEventListener('click', async event => {
       const delBtn = event.target.closest('.up-del');
       if (!delBtn) return;
       event.stopPropagation();
       if (!window.confirm('确定把这张照片从相册里取下来吗？')) return;
+      const key = delBtn.dataset.del;
+      if (String(key).startsWith('local-')) { removeLocal(key); sfx.pop(); return; }
       try {
-        await remove(ref(db, `gallery-photos/${delBtn.dataset.del}`));
+        await remove(ref(db, `gallery-photos/${key}`));
         sfx.pop();
       } catch {
         setStatus('删除失败，请稍后再试', true);

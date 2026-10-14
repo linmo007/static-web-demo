@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6e8f1" />
+  <title>今天吃什么 · 幸运转盘</title>
+  <style>
+    :root {
+      --pink: #f6dce9;
+      --lavender: #e5def7;
+      --cream: #fffafc;
+      --ink: #625564;
+      --accent: #bd879e;
+      --card: rgba(255, 255, 255, .43);
+      --line: rgba(255, 255, 255, .65);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: linear-gradient(125deg, var(--pink), #f8edf4, var(--lavender), #f4e5ee);
+      background-size: 300% 300%;
+      animation: bgFlow 16s ease-in-out infinite;
+      overflow-x: hidden;
+    }
+    @keyframes bgFlow { 0%,100% { background-position: 0 50%; } 50% { background-position: 100% 50%; } }
+
+    .ambient { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: -2; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(4px); opacity: .43; animation: drift 12s ease-in-out infinite alternate; }
+    .orb.one { width: 38vw; height: 38vw; min-width: 280px; min-height: 280px; background: rgba(255,255,255,.42); top: -14%; left: -10%; }
+    .orb.two { width: 29vw; height: 29vw; min-width: 220px; min-height: 220px; background: rgba(217,198,246,.56); right: -8%; bottom: 2%; animation-delay: -5s; }
+    @keyframes drift { to { transform: translate(3vw, 3vh) scale(1.08); } }
+
+    main { width: min(760px, calc(100% - 32px)); margin: 0 auto; padding: 64px 0 48px; }
+    .glass {
+      background: var(--card);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 54px rgba(118, 78, 113, .13), inset 0 1px 0 rgba(255,255,255,.55);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius: 28px;
+    }
+    .page-head { padding: 30px 24px 26px; text-align: center; margin-bottom: 24px; }
+    .eyebrow { margin: 0 0 12px; font-size: .74rem; letter-spacing: .25em; color: #9c748a; }
+    h1 { margin: 0; font: 400 clamp(1.9rem, 6vw, 3rem)/1.25 Georgia, "Songti SC", serif; letter-spacing: .08em; color: #796072; }
+    .page-head p { margin: 12px 0 0; font-size: .92rem; line-height: 1.9; color: #826d7d; }
+
+    /* ============ 转盘卡片 ============ */
+    .wheel-card { padding: 28px 22px 30px; text-align: center; }
+    .quota { margin: 0 0 18px; font-size: .92rem; color: #8f7184; letter-spacing: .05em; }
+    .quota b { color: #b06b87; font-weight: 600; font-size: 1.05rem; }
+    .quota.is-done b { color: #a9909e; }
+
+    .wheel-stage { position: relative; width: min(82vw, 400px); aspect-ratio: 1; margin: 4px auto 6px; }
+    .wheel-disc { position: absolute; inset: 0; border-radius: 50%; will-change: transform; filter: drop-shadow(0 16px 30px rgba(118,78,113,.22)); }
+    .wheel-disc canvas { width: 100%; height: 100%; display: block; border-radius: 50%; }
+    .wheel-disc.is-spinning { transition: transform 4.8s cubic-bezier(.12, .78, .18, 1); }
+    @media (prefers-reduced-motion: reduce) { .wheel-disc.is-spinning { transition-duration: .6s; } }
+
+    /* 顶部指针 */
+    .wheel-pointer {
+      position: absolute; top: -7px; left: 50%; transform: translateX(-50%); z-index: 3;
+      width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent;
+      border-top: 30px solid #b76f8d; filter: drop-shadow(0 4px 6px rgba(150,80,110,.35));
+    }
+    .wheel-pointer::after { content: ""; position: absolute; left: -6px; top: -33px; width: 12px; height: 12px; border-radius: 50%; background: #b76f8d; }
+
+    /* 中心按钮 */
+    .spin-btn {
+      position: absolute; left: 50%; top: 50%; z-index: 2; transform: translate(-50%, -50%);
+      width: 27%; aspect-ratio: 1; border-radius: 50%; border: 3px solid rgba(255,255,255,.85);
+      background: radial-gradient(circle at 34% 30%, #f3cdda, #c68aa4 70%);
+      color: #fff; font: 600 1.02rem "Microsoft YaHei", sans-serif; letter-spacing: .1em;
+      cursor: pointer; box-shadow: 0 10px 26px rgba(150,80,110,.4), inset 0 2px 6px rgba(255,255,255,.5);
+      transition: transform .2s, box-shadow .2s; line-height: 1.25;
+    }
+    .spin-btn:hover { transform: translate(-50%, -50%) scale(1.05); }
+    .spin-btn:active { transform: translate(-50%, -50%) scale(.96); }
+    .spin-btn:disabled { background: radial-gradient(circle at 34% 30%, #d9c3cf, #b8a3ae 70%); cursor: not-allowed; box-shadow: none; }
+    .spin-btn small { display: block; font-size: .62rem; font-weight: 400; opacity: .9; letter-spacing: .06em; margin-top: 2px; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center; margin: 20px 0 4px; padding: 0; list-style: none; }
+    .legend li { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: #8f7184; }
+    .legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+    .legend b { font-weight: 600; color: #7e6372; }
+
+    /* ============ 记录 ============ */
+    .records-card { margin-top: 22px; padding: 24px 22px 26px; }
+    .records-title { margin: 0 0 6px; font: 400 1.28rem Georgia, "Songti SC", serif; letter-spacing: .12em; color: #856376; text-align: center; }
+    .records-sub { margin: 0 0 18px; text-align: center; font-size: .78rem; color: #a9909e; }
+    .day-group { margin: 0 0 16px; }
+    .day-head { display: flex; align-items: baseline; gap: 8px; margin: 0 4px 9px; }
+    .day-head strong { font-size: .92rem; color: #96607a; letter-spacing: .04em; }
+    .day-head span { font-size: .72rem; color: #b39ba7; }
+    .rec-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+    .rec-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.42); border: 1px solid rgba(255,255,255,.6); }
+    .rec-time { flex: 0 0 46px; font-size: .8rem; color: #a18594; }
+    .rec-chip { flex: 0 0 auto; padding: 4px 12px; border-radius: 99px; font-size: .82rem; color: #8a5a70; background: var(--chip, rgba(232,183,203,.55)); border: 1px solid rgba(255,255,255,.7); }
+    .rec-note {
+      flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+      color: #7e6372; font: .84rem "Microsoft YaHei", sans-serif; padding: 4px 8px;
+      border-bottom: 1px dashed rgba(169,118,141,.3);
+    }
+    .rec-note::placeholder { color: #c0aab6; }
+    .rec-note:focus { border-bottom-color: rgba(183,111,141,.65); }
+    .rec-empty { text-align: center; color: #ae96a3; padding: 22px 14px; font-size: .88rem; border: 1px dashed rgba(169,118,141,.28); border-radius: 15px; background: rgba(255,255,255,.25); }
+
+    /* ============ 弹窗 ============ */
+    .modal-mask {
+      position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px;
+      background: rgba(46,32,44,.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      opacity: 0; visibility: hidden; transition: opacity .3s, visibility .3s;
+    }
+    .modal-mask.is-open { opacity: 1; visibility: visible; }
+    .modal {
+      width: min(420px, 100%); padding: 32px 26px 26px; border-radius: 26px; text-align: center;
+      background: rgba(255,250,252,.96); border: 1px solid rgba(255,255,255,.8);
+      box-shadow: 0 30px 80px rgba(80,50,70,.35);
+      transform: translateY(16px) scale(.96); transition: transform .32s cubic-bezier(.2,.8,.2,1);
+    }
+    .modal-mask.is-open .modal { transform: none; }
+    .result-emoji { font-size: 4rem; line-height: 1; display: block; animation: pop .5s cubic-bezier(.2,1.4,.4,1) both; }
+    @keyframes pop { from { transform: scale(.3) rotate(-14deg); opacity: 0; } }
+    .result-label { margin: 14px 0 4px; font-size: .82rem; letter-spacing: .2em; color: #b393a3; }
+    .result-name { margin: 0 0 6px; font: 400 2rem/1.3 Georgia, "Songti SC", serif; color: #a05f7d; }
+    .result-hint { margin: 0 0 22px; font-size: .82rem; color: #a78d9b; line-height: 1.8; }
+    .modal-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .m-btn { padding: 10px 24px; border-radius: 99px; border: 1px solid rgba(183,111,141,.4); cursor: pointer; font: .86rem "Microsoft YaHei", sans-serif; letter-spacing: .06em; transition: transform .2s, box-shadow .2s, background .2s; }
+    .m-btn:hover { transform: translateY(-2px); }
+    .m-btn-primary { background: linear-gradient(135deg, #e8b7cb, #bd879e); color: #fff; border-color: transparent; box-shadow: 0 8px 20px rgba(160,111,135,.3); }
+    .m-btn-ghost { background: rgba(255,255,255,.6); color: #a06c85; }
+
+    .back-link { display: inline-block; margin-top: 22px; text-decoration: none; color: #a17187; font: .86rem "Microsoft YaHei", sans-serif; letter-spacing: .08em; }
+    .back-link:hover { color: #9b5f7d; }
+    footer { text-align: center; padding: 18px 0 6px; font: .82rem Georgia, serif; letter-spacing: .12em; color: rgba(111,83,102,.7); }
+
+    /* ============ 深色模式 ============ */
+    @media (prefers-color-scheme: dark) {
+      :root { --pink:#3a2c3e; --lavender:#332b46; --cream:#241d28; --ink:#d5c2d2; --card:rgba(52,42,58,.52); --line:rgba(255,255,255,.14); }
+      body { background: linear-gradient(125deg,var(--pink),#2f2536,var(--lavender),#2c2135); color: var(--ink); }
+      .orb.one { background: rgba(255,255,255,.1); } .orb.two { background: rgba(150,110,200,.22); }
+      .eyebrow { color: #b98fa6; } h1 { color: #e3cddd; }
+      .page-head p, .quota, .legend li { color: #b49cae; }
+      .quota b { color: #e0a4bf; }
+      .records-title { color: #cba6ba; }
+      .records-sub, .rec-time, .rec-empty { color: #a0899a; }
+      .rec-item { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); }
+      .rec-note { color: #d3bdcc; } .rec-note::placeholder { color: #8d7d89; }
+      .rec-chip { color: #ecbdcf; }
+      .modal { background: rgba(58,46,62,.98); }
+      .result-label { color: #b393a3; } .result-name { color: #ecadca; } .result-hint { color: #b8a0ae; }
+      .m-btn-ghost { background: rgba(255,255,255,.08); color: #e0a4bf; }
+      .back-link { color: #cf9db6; } footer { color: rgba(213,194,210,.6); }
+    }
+    @media (max-width: 560px) {
+      main { width: min(100% - 24px, 760px); padding-top: 44px; }
+      .wheel-card { padding: 22px 14px 24px; }
+      .records-card { padding: 20px 14px 22px; }
+      .rec-item { flex-wrap: wrap; }
+      .rec-note { flex-basis: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <div class="ambient"><i class="orb one"></i><i class="orb two"></i></div>
+
+  <main>
+    <header class="page-head glass">
+      <p class="eyebrow">WHAT TO EAT TODAY</p>
+      <h1>今天吃什么</h1>
+      <p>选择困难症的救星 ♡ 让转盘替你决定今天吃什么。<br>每天有两次机会，转到什么就乖乖去吃哦。</p>
+    </header>
+
+    <section class="wheel-card glass">
+      <p class="quota" id="quota">今日剩余机会：<b>2</b> / 2</p>
+      <div class="wheel-stage">
+        <div class="wheel-pointer" aria-hidden="true"></div>
+        <div class="wheel-disc" id="wheelDisc">
+          <canvas id="wheelCanvas"></canvas>
+        </div>
+        <button type="button" class="spin-btn" id="spinBtn">开转<small>每天 2 次</small></button>
+      </div>
+      <ul class="legend" id="legend"></ul>
+    </section>
+
+    <section class="records-card glass">
+      <h2 class="records-title">转盘记录</h2>
+      <p class="records-sub">每天的决定都会存下来，点备注栏可以给这顿饭写句话 ♡</p>
+      <div id="recordsWrap"></div>
+    </section>
+
+    <a class="back-link" href="index.html">♡ 回到开场</a>
+    <footer>WHAT TO EAT · EVERY DAY ♡</footer>
+  </main>
+
+  <!-- 转动前确认 -->
+  <div class="modal-mask" id="confirmMask" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <span class="result-emoji">🍽️</span>
+      <h3 class="result-name" id="confirmTitle" style="font-size:1.5rem;">确定开转吗？</h3>
+      <p class="result-hint" id="confirmHint">今天还能转 2 次，转动后会自动记录结果。</p>
+      <div class="modal-btns">
+        <button type="button" class="m-btn m-btn-ghost" id="confirmCancel">再想想</button>
+        <button type="button" class="m-btn m-btn-primary" id="confirmOk">确定，开始！</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果弹窗 -->
+  <div class="modal-mask" id="resultMask" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resultName">
+      <span class="result-emoji" id="resultEmoji">🍱</span>
+      <p class="result-label">今天就吃</p>
+      <h3 class="result-name" id="resultName">食堂</h3>
+      <p class="result-hint" id="resultHint">转盘说的，不许耍赖 ♡</p>
+      <div class="modal-btns">
+        <button type="button" class="m-btn m-btn-ghost" id="resultNote">写个备注</button>
+        <button type="button" class="m-btn m-btn-primary" id="resultOk">好，去吃！</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="nav.js"></script>
+  <script type="module" src="player.js"></script>
+  <script type="module" src="ambient.js"></script>
+  <script type="module">
+    import { sfx } from './sfx.js';
+
+    // ============ 选项与概率（权重 = 百分比，合计 100） ============
+    const FOODS = [
+      { name: '火锅',   emoji: '🍲', weight: 5,  color: '#f6c9cd' },
+      { name: '烤肉',   emoji: '🥩', weight: 5,  color: '#f5d9b4' },
+      { name: '食堂',   emoji: '🍱', weight: 70, color: '#e6d3f6' },
+      { name: '螺蛳粉', emoji: '🍜', weight: 10, color: '#f3e7b5' },
+      { name: '小吃街', emoji: '🍢', weight: 10, color: '#cfe8dd' }
+    ];
+    const foodByName = n => FOODS.find(f => f.name === n);
+    const DAILY_LIMIT = 2;
+    const STORE_KEY = 'eat-wheel-records-v1';
+
+    // ============ 把 70% 的食堂拆成 14 个 5% 小格，与其他选项交错排布 ============
+    // 全盘 20 格、每格均等 5%：火锅×1、烤肉×1、螺蛳粉×2、小吃街×2、食堂×14。
+    // 各选项概率不变（格数 × 5%），但转盘视觉均匀，转动时每格被选中的机会相等。
+    const UNIT_PCT = 5;
+    const SLICE_COUNT = 20;
+    const SPECIAL_ORDER = ['火锅', '螺蛳粉', '烤肉', '小吃街', '螺蛳粉', '小吃街']; // 6 个非食堂格，同名隔开
+    const CANTEEN = foodByName('食堂');
+    const SLICES = (() => {
+      const slots = Array(SLICE_COUNT).fill(CANTEEN);
+      SPECIAL_ORDER.forEach((name, i) => {
+        slots[Math.round(i * SLICE_COUNT / SPECIAL_ORDER.length)] = foodByName(name);
+      });
+      return slots;
+    })();
+    const SLICE_DEG = UNIT_PCT / 100 * 360; // 每格 18°
+
+    // ============ 本地存储：{ '2026-10-14': [ { tm, name, note } ] } ============
+    const dayKey = (d = new Date()) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    function loadAll() { try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}') || {}; } catch { return {}; } }
+    function saveAll(data) { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+    function todayRecords() { return loadAll()[dayKey()] || []; }
+
+    // ============ 绘制转盘（角度自正上方顺时针） ============
+    const disc = document.querySelector('#wheelDisc');
+    const canvas = document.querySelector('#wheelCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function drawWheel() {
+      const size = disc.clientWidth;
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      canvas.width = Math.round(size * dpr);
+      canvas.height = Math.round(size * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const cx = size / 2, cy = size / 2, r = size / 2 - 2;
+      const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#625564';
+
+      let start = 0;
+      for (const opt of SLICES) {
+        const deg = SLICE_DEG;
+        const a0 = (start - 90) * Math.PI / 180;
+        const a1 = (start + deg - 90) * Math.PI / 180;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, a0, a1);
+        ctx.closePath();
+        ctx.fillStyle = opt.color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.9)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 文字沿扇形中线排布；下半圆翻转避免倒字
+        const mid = start + deg / 2;
+        const flipped = mid > 90 && mid < 270;
+        const fontScale = Math.max(12.5, Math.min(22, deg * 0.86));
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(mid * Math.PI / 180);
+        if (flipped) ctx.rotate(Math.PI);
+        const dir = flipped ? 1 : -1;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#8a5f72';
+        ctx.font = `${Math.round(fontScale * 1.1)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+        ctx.fillText(opt.emoji, 0, dir * r * 0.62);
+        ctx.font = `500 ${Math.round(fontScale)}px "Noto Sans SC","Microsoft YaHei",sans-serif`;
+        ctx.fillText(opt.name, 0, dir * r * 0.82);
+        ctx.restore();
+
+        start += deg;
+      }
+      // 外圈描边
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(183,111,141,.55)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - 7, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,.65)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    drawWheel();
+    window.addEventListener('resize', () => { if (!spinning) drawWheel(); });
+
+    // 图例（颜色 + 概率）
+    document.querySelector('#legend').innerHTML = FOODS.map(o =>
+      `<li><i style="background:${o.color}"></i><b>${o.emoji} ${o.name}</b> ${o.weight}%</li>`).join('');
+
+    // ============ 均匀随机：20 格等概率选中，每格 5%，格数即该食物的概率 ============
+    function pickSlice() { return Math.floor(Math.random() * SLICES.length); }
+
+    // ============ 状态与交互 ============
+    const spinBtn = document.querySelector('#spinBtn');
+    const quotaEl = document.querySelector('#quota');
+    const confirmMask = document.querySelector('#confirmMask');
+    const confirmHint = document.querySelector('#confirmHint');
+    const resultMask = document.querySelector('#resultMask');
+    const resultEmoji = document.querySelector('#resultEmoji');
+    const resultName = document.querySelector('#resultName');
+    const resultHint = document.querySelector('#resultHint');
+    let spinning = false;
+    let rotation = 0;
+    let lastResultIdx = 0;
+
+    function refreshQuota() {
+      const used = todayRecords().length;
+      const left = Math.max(0, DAILY_LIMIT - used);
+      quotaEl.classList.toggle('is-done', left === 0);
+      quotaEl.innerHTML = left > 0
+        ? `今日剩余机会：<b>${left}</b> / ${DAILY_LIMIT}`
+        : `今天的 ${DAILY_LIMIT} 次机会都用完啦，明天再来 ♡`;
+      spinBtn.disabled = left === 0 || spinning;
+      spinBtn.innerHTML = spinning ? '转动中…' : `开转<small>每天 ${DAILY_LIMIT} 次</small>`;
+    }
+
+    function openMask(mask) { mask.classList.add('is-open'); mask.setAttribute('aria-hidden', 'false'); }
+    function closeMask(mask) { mask.classList.remove('is-open'); mask.setAttribute('aria-hidden', 'true'); }
+
+    spinBtn.addEventListener('click', () => {
+      if (spinning) return;
+      const left = DAILY_LIMIT - todayRecords().length;
+      if (left <= 0) { refreshQuota(); return; }
+      confirmHint.textContent = `今天还能转 ${left} 次，转动后会自动记录结果。`;
+      openMask(confirmMask);
+    });
+    document.querySelector('#confirmCancel').addEventListener('click', () => closeMask(confirmMask));
+    confirmMask.addEventListener('click', e => { if (e.target === confirmMask) closeMask(confirmMask); });
+
+    document.querySelector('#confirmOk').addEventListener('click', () => {
+      closeMask(confirmMask);
+      startSpin();
+    });
+
+    function startSpin() {
+      if (spinning) return;
+      if (DAILY_LIMIT - todayRecords().length <= 0) { refreshQuota(); return; }
+      spinning = true;
+      refreshQuota();
+
+      const idx = pickSlice();
+      lastResultIdx = idx;
+      const opt = SLICES[idx];
+      // 扇格在盘上的角度区间（自正上方顺时针，每格 18°）
+      const a0 = idx * SLICE_DEG;
+      const span = SLICE_DEG;
+      const pad = span * 0.22;                        // 距边界留点余量，别压线
+      const land = a0 + pad + Math.random() * Math.max(1, span - pad * 2);
+
+      const currentMod = ((rotation % 360) + 360) % 360;
+      const targetMod = (360 - land + 360) % 360;    // 顺时针旋转使该扇形停在正上方指针
+      let delta = (targetMod - currentMod + 360) % 360;
+      const turns = matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 6;
+      rotation += turns * 360 + delta;
+
+      disc.classList.add('is-spinning');
+      disc.style.transform = `rotate(${rotation}deg)`;
+
+      const finish = () => {
+        spinning = false;
+        saveResult(opt);
+        refreshQuota();
+        renderRecords();
+        openMask(resultMask);
+        try { sfx.ding(); } catch { /* 忽略 */ }
+      };
+      let ended = false;
+      disc.addEventListener('transitionend', function once(e) {
+        if (e.propertyName !== 'transform' || ended) return;
+        ended = true;
+        disc.removeEventListener('transitionend', once);
+        finish();
+      });
+      // 兜底：个别手机浏览器 transitionend 不稳定
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      setTimeout(() => { if (!ended) { ended = true; finish(); } }, (reduce ? 700 : 4900));
+    }
+
+    // ============ 保存记录 ============
+    function saveResult(opt) {
+      const data = loadAll();
+      const key = dayKey();
+      const list = data[key] || [];
+      const now = new Date();
+      list.push({
+        tm: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+        name: opt.name,
+        note: ''
+      });
+      data[key] = list;
+      saveAll(data);
+      resultEmoji.textContent = opt.emoji;
+      resultName.textContent = opt.name;
+      resultHint.textContent = `${opt.weight >= 50 ? '命中了天天去的老地方～' : '这个选择可不多见哦～'} 转盘说的，不许耍赖 ♡`;
+    }
+
+    // ============ 记录渲染（备注可即时编辑保存） ============
+    const recordsWrap = document.querySelector('#recordsWrap');
+    function renderRecords() {
+      const data = loadAll();
+      const days = Object.keys(data).sort((a, b) => b.localeCompare(a));
+      if (!days.length) {
+        recordsWrap.innerHTML = '<p class="rec-empty">还没有转过转盘，今天吃什么？去转一次吧 ♡</p>';
+        return;
+      }
+      recordsWrap.innerHTML = days.map(d => {
+        const recs = data[d];
+        const weekday = ['周日','周一','周二','周三','周四','周五','周六'][new Date(d + 'T00:00:00').getDay()];
+        const items = recs.map((r, i) => {
+          const opt = FOODS.find(o => o.name === r.name);
+          const chipBg = opt ? opt.color : 'rgba(232,183,203,.55)';
+          const note = String(r.note || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+          return `<li class="rec-item">
+            <span class="rec-time">${r.tm}</span>
+            <span class="rec-chip" style="--chip:${chipBg}">${opt ? opt.emoji + ' ' : ''}${r.name}</span>
+            <input class="rec-note" data-day="${d}" data-idx="${i}" maxlength="40" value="${note}" placeholder="加个备注，比如：好吃！下次还来～">
+          </li>`;
+        }).join('');
+        return `<div class="day-group">
+          <div class="day-head"><strong>${d}</strong><span>${weekday} · ${recs.length} 次</span></div>
+          <ul class="rec-list">${items}</ul>
+        </div>`;
+      }).join('');
+    }
+    // 备注输入即时保存（事件委托）
+    recordsWrap.addEventListener('input', e => {
+      const input = e.target.closest('.rec-note');
+      if (!input) return;
+      const data = loadAll();
+      const list = data[input.dataset.day];
+      if (!list || !list[+input.dataset.idx]) return;
+      list[+input.dataset.idx].note = input.value.slice(0, 40);
+      saveAll(data);
+    });
+    renderRecords();
+
+    // 结果弹窗
+    document.querySelector('#resultOk').addEventListener('click', () => closeMask(resultMask));
+    resultMask.addEventListener('click', e => { if (e.target === resultMask) closeMask(resultMask); });
+    document.querySelector('#resultNote').addEventListener('click', () => {
+      closeMask(resultMask);
+      const key = dayKey();
+      const list = todayRecords();
+      const input = recordsWrap.querySelector(`.rec-note[data-day="${key}"][data-idx="${list.length - 1}"]`);
+      if (input) { input.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => input.focus(), 350); }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { closeMask(confirmMask); closeMask(resultMask); }
+    });
+
+    refreshQuota();
+    // 跨过零点时自动恢复次数（页面一直开着的情况）
+    let lastDay = dayKey();
+    setInterval(() => {
+      const nowDay = dayKey();
+      if (nowDay !== lastDay) { lastDay = nowDay; refreshQuota(); renderRecords(); drawWheel(); }
+    }, 30000);
+  </script>
+</body>
+</html>
